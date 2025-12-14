@@ -20,6 +20,7 @@ const InterviewScreen = ({
   const textareaRef = useRef(null);
   const recognitionRef = useRef(null);
   const finalTranscriptRef = useRef('');
+  const latestTranscriptRef = useRef('');
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -156,6 +157,7 @@ const InterviewScreen = ({
           // ignore
         }
       }
+      setAnswer(latestTranscriptRef.current || finalTranscriptRef.current || answer);
       return;
     }
 
@@ -169,6 +171,7 @@ const InterviewScreen = ({
     recognition.lang = 'en-US';
 
     finalTranscriptRef.current = '';
+    latestTranscriptRef.current = '';
     recognitionRef.current = recognition;
     setIsRecording(true);
 
@@ -185,6 +188,7 @@ const InterviewScreen = ({
         }
       }
       const combined = `${finalTranscriptRef.current}${interim}`.trim();
+      latestTranscriptRef.current = combined;
       setAnswer(combined);
     };
 
@@ -195,6 +199,7 @@ const InterviewScreen = ({
     };
 
     recognition.onend = () => {
+      setAnswer(latestTranscriptRef.current || finalTranscriptRef.current || answer);
       setIsRecording(false);
       recognitionRef.current = null;
     };
