@@ -16,6 +16,113 @@ function App() {
     reviews: []
   });
 
+  const parseReviewText = (reviewText, question) => {
+    if (!reviewText || typeof reviewText !== 'string') return null;
+
+    const normalized = reviewText.replace(/\r\n/g, '\n');
+    const lines = normalized.split('\n').map((l) => l.trim()).filter(Boolean);
+    const joined = lines.join('\n');
+
+    const scoreMatch = joined.match(/Score\s*:\s*(\d+(?:\.\d+)?)\s*\/\s*10/i);
+    const score = scoreMatch ? Number(scoreMatch[1]) : undefined;
+
+    const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    const pickSection = (labels) => {
+      const allLabels = Array.isArray(labels) ? labels : [labels];
+      const labelAlternation = allLabels.map((l) => escapeRegExp(l)).join('|');
+
+      // Allow variants like:
+      // "Strengths: ...", "**Strengths**: ...", "Strengths - ...", "### Strengths"
+      const header = `(?:\\*{0,2}\\s*)?(?:${labelAlternation})(?:\\s*\\*{0,2})?`;
+      const after = `(?:\\s*(?::|-|—)\\s*)?`;
+      const stopLabels = ['Score', 'Feedback', 'Strengths', 'Improvements', 'Areas for Improvement', 'Areas of Improvement', 'Suggestions', 'Suggestions for Improvement', 'Weaknesses', 'Opportunities', 'Opportunity Areas', 'What went well', 'What to improve'];
+      const stopAlt = stopLabels.map((l) => escapeRegExp(l)).join('|');
+
+      const regex = new RegExp(
+        `(?:^|\\n)(?:#{1,6}\\s*)?${header}${after}([\\s\\S]*?)(?=(?:\\n(?:#{1,6}\\s*)?(?:\\*{0,2}\\s*)?(?:${stopAlt})(?:\\s*\\*{0,2})?\\s*(?::|-|—)\\s*)|$)`,
+        'i'
+      );
+      const m = joined.match(regex);
+      return m && m[1] ? m[1].trim() : '';
+    };
+
+    const feedback = pickSection(['Feedback']);
+    const strengthsRaw = pickSection(['Strengths', 'What went well', 'Pros', 'Positives']);
+    const improvementsRaw = pickSection([
+      'Improvements',
+      'Areas for Improvement',
+      'Areas of Improvement',
+      'What to improve',
+      'Suggestions',
+      'Suggestions for Improvement',
+      'Weaknesses',
+      'Opportunity Areas',
+      'Opportunities'
+    ]);
+
+    const toList = (raw) => {
+      if (!raw) return [];
+
+      const cleaned = raw
+        .replace(/\r\n/g, '\n')
+        .replace(/\*\*/g, '')
+        .trim();
+
+      // Prefer line-based bullets/numbering
+      const byLines = cleaned
+        .split('\n')
+        .map((ln) => ln.trim())
+        .filter(Boolean)
+        .map((ln) => ln.replace(/^\s*(?:[-*•]|\u2022|\d+\.|\d+\)|\d+\-)\s+/, '').trim())
+        .filter(Boolean);
+
+      if (byLines.length > 1) return byLines;
+
+      // Fallback: comma-separated or single-line bullets
+      return cleaned
+        .split(/,|•|\u2022|\s+-\s+/g)
+        .map((s) => s.trim())
+        .filter(Boolean);
+    };
+
+    const strengths = toList(strengthsRaw);
+    const improvements = toList(improvementsRaw);
+
+    return {
+      score: typeof score === 'number' && Number.isFinite(score) ? score : undefined,
+      feedback: feedback || '',
+      strengths,
+      improvements,
+      question
+    };
+  };
+
+  const normalizeReview = (review, question, answer) => {
+    const fallback = generateMockReview(question, answer);
+    if (!review) return { ...fallback, answer };
+    if (typeof review === 'string') {
+      const parsed = parseReviewText(review, question);
+      return { ...(parsed || fallback), answer, question };
+    }
+    if (typeof review === 'object') {
+      const merged = {
+        ...review,
+        question: review.question || question,
+        answer
+      };
+      if (typeof merged.score === 'string') merged.score = Number(merged.score);
+      if (!Array.isArray(merged.strengths) && typeof merged.strengths === 'string') {
+        merged.strengths = merged.strengths.split(',').map((s) => s.trim()).filter(Boolean);
+      }
+      if (!Array.isArray(merged.improvements) && typeof merged.improvements === 'string') {
+        merged.improvements = merged.improvements.split(',').map((s) => s.trim()).filter(Boolean);
+      }
+      return merged;
+    }
+    return { ...fallback, answer };
+  };
+
   // API service functions
   const apiService = {
     startInterview: async (topic) => {
@@ -52,10 +159,10 @@ function App() {
           body: JSON.stringify({ question, answer }),
         });
         const data = await response.json();
-        return data.review || generateMockReview(question, answer);
+        return normalizeReview(data.review, question, answer);
       } catch (error) {
         console.error('Error submitting answer:', error);
-        return generateMockReview(question, answer);
+        return normalizeReview(null, question, answer);
       }
     }
   };
@@ -132,8 +239,12 @@ function App() {
 
   const calculateOverallScore = () => {
     if (interviewData.reviews.length === 0) return 0;
-    const totalScore = interviewData.reviews.reduce((acc, review) => acc + review.score, 0);
-    return totalScore / interviewData.reviews.length;
+    const validScores = interviewData.reviews
+      .map((r) => (typeof r?.score === 'number' && Number.isFinite(r.score) ? r.score : null))
+      .filter((v) => v !== null);
+    if (validScores.length === 0) return 0;
+    const totalScore = validScores.reduce((acc, s) => acc + s, 0);
+    return totalScore / validScores.length;
   };
 
   const calculateCommunicationScore = () => {
@@ -183,6 +294,7 @@ function App() {
           <FinalSummaryScreen
             overallScore={calculateOverallScore()}
             questionReviews={interviewData.reviews}
+            answers={interviewData.answers}
             communicationScore={calculateCommunicationScore()}
             confidenceScore={calculateConfidenceScore()}
             onRestartInterview={handleRestartInterview}

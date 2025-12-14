@@ -5,6 +5,7 @@ import { Trophy, TrendingUp, Star, Award, RotateCcw, Download, Share2 } from 'lu
 const FinalSummaryScreen = ({ 
   overallScore, 
   questionReviews, 
+  answers,
   communicationScore, 
   confidenceScore, 
   onRestartInterview 
@@ -39,6 +40,7 @@ const FinalSummaryScreen = ({
   };
 
   const safeQuestionReviews = Array.isArray(questionReviews) ? questionReviews : [];
+  const safeAnswers = Array.isArray(answers) ? answers : [];
   const averageQuestionScore = safeQuestionReviews.length
     ? safeQuestionReviews.reduce((acc, review) => acc + (isValidScore(review?.score) ? review.score : 0), 0) / safeQuestionReviews.length
     : 0;
@@ -213,7 +215,7 @@ const FinalSummaryScreen = ({
                   <div>
                     <p className="font-medium text-gray-800">Question {index + 1}</p>
                     <p className="text-sm text-gray-600 truncate max-w-md">
-                      {(review.question || '').substring(0, 60)}...
+                      {((review.question || safeAnswers[index]?.question || '')).substring(0, 60)}...
                     </p>
                   </div>
                 </div>
@@ -249,11 +251,18 @@ const FinalSummaryScreen = ({
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
                     <div className="font-semibold text-gray-800 mb-1">Question {index + 1}</div>
-                    <div className="text-sm text-gray-700">{review.question || 'Question not available'}</div>
+                    <div className="text-sm text-gray-700">{review.question || safeAnswers[index]?.question || 'Question not available'}</div>
                   </div>
                   <div className="text-right">
                     <div className={`text-lg font-bold ${getScoreColor(review.score)}`}>{formatScore(review.score)}</div>
                     <div className="text-xs text-gray-500">/ 10</div>
+                  </div>
+                </div>
+
+                <div className="mt-3">
+                  <div className="text-sm font-medium text-gray-800 mb-1">Your Answer</div>
+                  <div className="text-sm text-gray-700 whitespace-pre-wrap">
+                    {review.answer || safeAnswers[index]?.answer || 'Answer not available.'}
                   </div>
                 </div>
 
