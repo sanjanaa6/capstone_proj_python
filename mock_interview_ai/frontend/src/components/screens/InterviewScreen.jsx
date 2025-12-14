@@ -13,10 +13,13 @@ const InterviewScreen = ({
 }) => {
   const [answer, setAnswer] = useState('');
   const [isRecording, setIsRecording] = useState(false);
+  const [recordingError, setRecordingError] = useState('');
   const [timeElapsed, setTimeElapsed] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [isTtsEnabled, setIsTtsEnabled] = useState(true);
   const textareaRef = useRef(null);
+  const recognitionRef = useRef(null);
+  const finalTranscriptRef = useRef('');
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -79,6 +82,36 @@ const InterviewScreen = ({
   }, [currentQuestion, isReviewMode]);
 
   useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.onresult = null;
+          recognitionRef.current.onerror = null;
+          recognitionRef.current.onend = null;
+          recognitionRef.current.stop();
+        } catch {
+          // ignore
+        }
+        recognitionRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isReviewMode && isRecording) {
+      setIsRecording(false);
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch {
+          // ignore
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentQuestion]);
+
+  useEffect(() => {
     if (!isReviewMode) {
       speakQuestion(currentQuestion);
     }
@@ -105,12 +138,73 @@ const InterviewScreen = ({
   };
 
   const toggleRecording = () => {
+    if (typeof window === 'undefined') return;
+    setRecordingError('');
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setRecordingError('Speech recognition is not supported in this browser.');
+      return;
+    }
+
     if (isRecording) {
       setIsRecording(false);
-      // Handle voice-to-text here
-    } else {
-      setIsRecording(true);
-      // Start recording
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch {
+          // ignore
+        }
+      }
+      return;
+    }
+
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+
+    finalTranscriptRef.current = '';
+    recognitionRef.current = recognition;
+    setIsRecording(true);
+
+    recognition.onresult = (event) => {
+      let interim = '';
+      for (let i = event.resultIndex; i < event.results.length; i += 1) {
+        const res = event.results[i];
+        const text = res && res[0] && res[0].transcript ? res[0].transcript : '';
+        if (!text) continue;
+        if (res.isFinal) {
+          finalTranscriptRef.current += `${text} `;
+        } else {
+          interim += text;
+        }
+      }
+      const combined = `${finalTranscriptRef.current}${interim}`.trim();
+      setAnswer(combined);
+    };
+
+    recognition.onerror = (e) => {
+      setRecordingError(e?.error ? `Speech recognition error: ${e.error}` : 'Speech recognition error');
+      setIsRecording(false);
+      recognitionRef.current = null;
+    };
+
+    recognition.onend = () => {
+      setIsRecording(false);
+      recognitionRef.current = null;
+    };
+
+    try {
+      recognition.start();
+    } catch (e) {
+      setRecordingError('Unable to start recording. Please try again.');
+      setIsRecording(false);
+      recognitionRef.current = null;
     }
   };
 
@@ -239,7 +333,6 @@ const InterviewScreen = ({
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={toggleRecording}
-                    disabled={isRecording}
                     className={`rounded-full ${
                       isRecording 
                         ? ''
@@ -248,7 +341,7 @@ const InterviewScreen = ({
                     style={{
                       padding: 12,
                       border: 'none',
-                      cursor: isRecording ? 'not-allowed' : 'pointer',
+                      cursor: 'pointer',
                       background: isRecording ? '#ef4444' : '#f3f4f6',
                       color: isRecording ? 'white' : '#4b5563',
                       transition: 'all 0.2s ease'
@@ -283,6 +376,19 @@ const InterviewScreen = ({
                     <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
                     <span className="text-sm font-medium">Recording... Click the mic button to stop</span>
                   </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <AnimatePresence>
+              {!!recordingError && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mt-3"
+                >
+                  <div className="text-yellow-800 text-sm font-medium">{recordingError}</div>
                 </motion.div>
               )}
             </AnimatePresence>
