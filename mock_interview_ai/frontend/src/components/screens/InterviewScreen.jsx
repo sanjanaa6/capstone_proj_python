@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mic, MicOff, Send, Clock, ChevronRight, ChevronLeft, Volume2, VolumeX } from 'lucide-react';
+import { Mic, MicOff, Send, Clock, ChevronRight, ChevronLeft, Volume2, VolumeX, Camera, CameraOff } from 'lucide-react';
 
 const InterviewScreen = ({ 
   currentQuestion, 
@@ -17,10 +18,22 @@ const InterviewScreen = ({
   const [timeElapsed, setTimeElapsed] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [isTtsEnabled, setIsTtsEnabled] = useState(true);
+  const [isCameraEnabled, setIsCameraEnabled] = useState(false);
+  const [cameraError, setCameraError] = useState('');
+  const [proctorStatus, setProctorStatus] = useState('Camera off');
+  const [warningCount, setWarningCount] = useState(0);
   const textareaRef = useRef(null);
   const recognitionRef = useRef(null);
   const finalTranscriptRef = useRef('');
   const latestTranscriptRef = useRef('');
+  const videoRef = useRef(null);
+  const cameraStreamRef = useRef(null);
+  const canvasRef = useRef(null);
+  const faceMeshRef = useRef(null);
+  const rafRef = useRef(null);
+  const proctorStatusRef = useRef('Camera off');
+  const badSinceRef = useRef(null);
+  const warnedForCurrentBadRef = useRef(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -44,6 +57,215 @@ const InterviewScreen = ({
       window.speechSynthesis.cancel();
     }
   }, [isTtsEnabled]);
+
+  useEffect(() => {
+    const stopStream = () => {
+      if (cameraStreamRef.current) {
+        try {
+          cameraStreamRef.current.getTracks().forEach((t) => t.stop());
+        } catch {
+          // ignore
+        }
+        cameraStreamRef.current = null;
+      }
+      if (videoRef.current) {
+        try {
+          videoRef.current.srcObject = null;
+        } catch {
+          // ignore
+        }
+      }
+
+      if (rafRef.current) {
+        try {
+          cancelAnimationFrame(rafRef.current);
+        } catch {
+          // ignore
+        }
+        rafRef.current = null;
+      }
+
+      if (faceMeshRef.current && typeof faceMeshRef.current.close === 'function') {
+        try {
+          faceMeshRef.current.close();
+        } catch {
+          // ignore
+        }
+      }
+      faceMeshRef.current = null;
+    };
+
+    if (!isCameraEnabled) {
+      setProctorStatus('Camera off');
+      badSinceRef.current = null;
+      warnedForCurrentBadRef.current = false;
+      stopStream();
+      return;
+    }
+
+    if (typeof window === 'undefined' || !navigator?.mediaDevices?.getUserMedia) {
+      setCameraError('Camera is not supported in this browser.');
+      setIsCameraEnabled(false);
+      return;
+    }
+
+    setCameraError('');
+    setProctorStatus('Starting camera...');
+    setWarningCount(0);
+
+    (async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        cameraStreamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          try {
+            await videoRef.current.play();
+          } catch {
+            // ignore
+          }
+        }
+
+        const FaceMeshCtor = typeof window !== 'undefined' ? window.FaceMesh : null;
+        if (!FaceMeshCtor) {
+          setProctorStatus('Face tracking unavailable');
+          return;
+        }
+
+        const faceMesh = new FaceMeshCtor({
+          locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+        });
+        faceMesh.setOptions({
+          maxNumFaces: 1,
+          refineLandmarks: true,
+          minDetectionConfidence: 0.5,
+          minTrackingConfidence: 0.5
+        });
+
+        faceMesh.onResults((results) => {
+          const canvas = canvasRef.current;
+          const video = videoRef.current;
+          if (!canvas || !video) return;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) return;
+
+          const w = video.videoWidth || 0;
+          const h = video.videoHeight || 0;
+          if (!w || !h) return;
+
+          if (canvas.width !== w) canvas.width = w;
+          if (canvas.height !== h) canvas.height = h;
+
+          ctx.clearRect(0, 0, w, h);
+
+          const landmarks = results?.multiFaceLandmarks?.[0];
+          if (!landmarks || !Array.isArray(landmarks)) {
+            setProctorStatus('No face detected');
+            return;
+          }
+
+          // Simple “looking away” heuristic based on nose position relative to cheeks.
+          const leftCheek = landmarks[234];
+          const rightCheek = landmarks[454];
+          const noseTip = landmarks[1];
+
+          if (leftCheek && rightCheek && noseTip) {
+            const faceCenterX = (leftCheek.x + rightCheek.x) / 2;
+            const delta = noseTip.x - faceCenterX;
+            if (Math.abs(delta) > 0.06) {
+              setProctorStatus('Looking away');
+            } else {
+              setProctorStatus('Face detected');
+            }
+          } else {
+            setProctorStatus('Face detected');
+          }
+
+          // Draw a small subset of points (eyes + nose) for visual confirmation.
+          ctx.fillStyle = 'rgba(59, 130, 246, 0.9)';
+          const drawIdx = [33, 133, 362, 263, 1];
+          drawIdx.forEach((i) => {
+            const p = landmarks[i];
+            if (!p) return;
+            ctx.beginPath();
+            ctx.arc(p.x * w, p.y * h, 2, 0, Math.PI * 2);
+            ctx.fill();
+          });
+        });
+
+        faceMeshRef.current = faceMesh;
+
+        const loop = async () => {
+          const video = videoRef.current;
+          if (!video || !faceMeshRef.current) return;
+          try {
+            await faceMeshRef.current.send({ image: video });
+          } catch {
+            // ignore
+          }
+          rafRef.current = requestAnimationFrame(loop);
+        };
+
+        rafRef.current = requestAnimationFrame(loop);
+      } catch {
+        setCameraError('Unable to access camera. Please allow camera permission.');
+        setIsCameraEnabled(false);
+        setProctorStatus('Camera permission denied');
+        stopStream();
+      }
+    })();
+
+    return () => {
+      stopStream();
+    };
+  }, [isCameraEnabled]);
+
+  useEffect(() => {
+    proctorStatusRef.current = proctorStatus;
+  }, [proctorStatus]);
+
+  useEffect(() => {
+    if (!isCameraEnabled || isReviewMode) return;
+
+    const MAX_WARNINGS = 6;
+    const THRESHOLD_MS = 2500;
+
+    const isBadStatus = (status) => status === 'Looking away' || status === 'No face detected';
+
+    const interval = setInterval(() => {
+      const status = proctorStatusRef.current;
+      const bad = isBadStatus(status);
+      const now = Date.now();
+
+      if (bad) {
+        if (!badSinceRef.current) badSinceRef.current = now;
+        if (!warnedForCurrentBadRef.current && now - badSinceRef.current >= THRESHOLD_MS) {
+          warnedForCurrentBadRef.current = true;
+          setWarningCount((c) => (c >= MAX_WARNINGS ? c : c + 1));
+        }
+      } else {
+        badSinceRef.current = null;
+        warnedForCurrentBadRef.current = false;
+      }
+    }, 300);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [isCameraEnabled, isReviewMode]);
+
+  useEffect(() => {
+    return () => {
+      if (cameraStreamRef.current) {
+        try {
+          cameraStreamRef.current.getTracks().forEach((t) => t.stop());
+        } catch {
+          // ignore
+        }
+        cameraStreamRef.current = null;
+      }
+    };
+  }, []);
 
   const speakQuestion = (text) => {
     if (!isTtsEnabled) return;
@@ -240,6 +462,17 @@ const InterviewScreen = ({
             </div>
             <div className="flex items-center gap-2">
               <button
+                onClick={() => {
+                  setCameraError('');
+                  setIsCameraEnabled((v) => !v);
+                }}
+                className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors"
+                type="button"
+                aria-label={isCameraEnabled ? 'Disable camera preview' : 'Enable camera preview'}
+              >
+                {isCameraEnabled ? <CameraOff className="w-4 h-4" /> : <Camera className="w-4 h-4" />}
+              </button>
+              <button
                 onClick={() => setIsTtsEnabled((v) => !v)}
                 className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors"
                 type="button"
@@ -412,6 +645,90 @@ const InterviewScreen = ({
               Answer submitted • Time taken: {formatTime(timeElapsed)}
             </p>
           </motion.div>
+        )}
+
+        {typeof document !== 'undefined' && (isCameraEnabled || !!cameraError) && !isReviewMode && createPortal(
+          <div
+            style={{
+              position: 'fixed',
+              top: 16,
+              right: 16,
+              zIndex: 9999,
+              width: 280
+            }}
+          >
+            {!cameraError && (
+              <div style={{ display: 'grid', gap: 8, marginBottom: 8 }}>
+                <div
+                  style={{
+                    padding: '10px 12px',
+                    borderRadius: 10,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    border: '1px solid rgba(255,255,255,0.18)',
+                    color: 'white',
+                    background:
+                      proctorStatus === 'Face detected'
+                        ? 'rgba(34, 197, 94, 0.35)'
+                        : proctorStatus === 'Looking away' || proctorStatus === 'No face detected'
+                          ? 'rgba(239, 68, 68, 0.35)'
+                          : 'rgba(107, 114, 128, 0.35)'
+                  }}
+                >
+                  {proctorStatus === 'Face detected'
+                    ? 'LOOKING AT SCREEN'
+                    : proctorStatus === 'Looking away'
+                      ? 'LOOKING AWAY'
+                      : proctorStatus === 'No face detected'
+                        ? 'NO FACE DETECTED'
+                        : String(proctorStatus || '').toUpperCase()}
+                </div>
+                <div
+                  style={{
+                    padding: '10px 12px',
+                    borderRadius: 10,
+                    fontSize: 12,
+                    fontWeight: 800,
+                    border: '1px solid rgba(255,255,255,0.18)',
+                    color: 'white',
+                    background: 'rgba(234, 179, 8, 0.35)'
+                  }}
+                >
+                  WARNING {warningCount}/6
+                </div>
+              </div>
+            )}
+
+            <div
+              style={{
+                borderRadius: 14,
+                overflow: 'hidden',
+                border: '1px solid rgba(255,255,255,0.18)',
+                background: 'rgba(17, 24, 39, 0.95)'
+              }}
+            >
+              {cameraError ? (
+                <div style={{ padding: 12, color: 'white' }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>Camera</div>
+                  <div style={{ fontSize: 12, opacity: 0.9 }}>{cameraError}</div>
+                </div>
+              ) : (
+                <div style={{ position: 'relative' }}>
+                  <video
+                    ref={videoRef}
+                    muted
+                    playsInline
+                    style={{ width: '100%', height: 170, objectFit: 'cover', display: 'block' }}
+                  />
+                  <canvas
+                    ref={canvasRef}
+                    style={{ position: 'absolute', inset: 0, width: '100%', height: 170 }}
+                  />
+                </div>
+              )}
+            </div>
+          </div>,
+          document.body
         )}
       </motion.div>
     </div>
