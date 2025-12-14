@@ -9,29 +9,39 @@ const FinalSummaryScreen = ({
   confidenceScore, 
   onRestartInterview 
 }) => {
+  const isValidScore = (score) => typeof score === 'number' && Number.isFinite(score);
+  const formatScore = (score) => (isValidScore(score) ? score.toFixed(1) : '—');
+
   const getScoreColor = (score) => {
+    if (!isValidScore(score)) return 'text-gray-500';
     if (score >= 8) return 'text-green-600';
     if (score >= 6) return 'text-yellow-600';
     return 'text-red-600';
   };
 
   const getScoreBgColor = (score) => {
+    if (!isValidScore(score)) return 'bg-gray-100';
     if (score >= 8) return 'bg-green-100';
     if (score >= 6) return 'bg-yellow-100';
     return 'bg-red-100';
   };
 
   const getScoreProgress = (score) => {
+    if (!isValidScore(score)) return 0;
     return (score / 10) * 100;
   };
 
   const getPerformanceMessage = (score) => {
+    if (!isValidScore(score)) return "Interview complete! Review your results below.";
     if (score >= 8) return "Outstanding performance! You're interview-ready!";
     if (score >= 6) return "Great job! With a bit more practice, you'll be excellent!";
     return "Good effort! Keep practicing to build your confidence.";
   };
 
-  const averageQuestionScore = questionReviews.reduce((acc, review) => acc + review.score, 0) / questionReviews.length;
+  const safeQuestionReviews = Array.isArray(questionReviews) ? questionReviews : [];
+  const averageQuestionScore = safeQuestionReviews.length
+    ? safeQuestionReviews.reduce((acc, review) => acc + (isValidScore(review?.score) ? review.score : 0), 0) / safeQuestionReviews.length
+    : 0;
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8">
@@ -100,7 +110,7 @@ const FinalSummaryScreen = ({
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <span className={`text-4xl font-bold ${getScoreColor(overallScore)}`}>
-                {overallScore.toFixed(1)}
+                {formatScore(overallScore)}
               </span>
               <span className="text-sm text-gray-600">/ 10</span>
             </div>
@@ -166,7 +176,7 @@ const FinalSummaryScreen = ({
             </div>
             <h3 className="font-semibold text-gray-800 mb-2">Question Average</h3>
             <div className={`text-2xl font-bold ${getScoreColor(averageQuestionScore)}`}>
-              {averageQuestionScore.toFixed(1)}
+              {formatScore(averageQuestionScore)}
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
               <motion.div
@@ -188,7 +198,7 @@ const FinalSummaryScreen = ({
         >
           <h3 className="font-semibold text-gray-800 mb-4">Question-wise Performance</h3>
           <div className="space-y-3">
-            {questionReviews.map((review, index) => (
+            {safeQuestionReviews.map((review, index) => (
               <motion.div
                 key={index}
                 initial={{ opacity: 0, x: -20 }}
@@ -203,24 +213,76 @@ const FinalSummaryScreen = ({
                   <div>
                     <p className="font-medium text-gray-800">Question {index + 1}</p>
                     <p className="text-sm text-gray-600 truncate max-w-md">
-                      {review.question?.substring(0, 60)}...
+                      {(review.question || '').substring(0, 60)}...
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className={`font-bold ${getScoreColor(review.score)}`}>
-                    {review.score.toFixed(1)}
+                    {formatScore(review.score)}
                   </span>
                   <div className="w-16 bg-gray-200 rounded-full h-2">
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${getScoreProgress(review.score)}%` }}
                       transition={{ duration: 0.5, delay: 0.7 + index * 0.1 }}
-                      className={`h-2 rounded-full ${review.score >= 8 ? 'bg-green-500' : review.score >= 6 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                      className={`h-2 rounded-full ${!isValidScore(review.score) ? 'bg-gray-400' : review.score >= 8 ? 'bg-green-500' : review.score >= 6 ? 'bg-yellow-500' : 'bg-red-500'}`}
                     />
                   </div>
                 </div>
               </motion.div>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* Detailed AI Feedback */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.65 }}
+          className="card mb-8"
+        >
+          <h3 className="font-semibold text-gray-800 mb-4">AI Review (Answers + Improvements)</h3>
+          <div className="space-y-4">
+            {safeQuestionReviews.map((review, index) => (
+              <div key={index} className="p-4 bg-gray-50 rounded-lg">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="font-semibold text-gray-800 mb-1">Question {index + 1}</div>
+                    <div className="text-sm text-gray-700">{review.question || 'Question not available'}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className={`text-lg font-bold ${getScoreColor(review.score)}`}>{formatScore(review.score)}</div>
+                    <div className="text-xs text-gray-500">/ 10</div>
+                  </div>
+                </div>
+
+                <div className="mt-3">
+                  <div className="text-sm font-medium text-gray-800 mb-1">Feedback</div>
+                  <div className="text-sm text-gray-700">
+                    {review.feedback || 'Feedback not available.'}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                  <div>
+                    <div className="text-sm font-medium text-gray-800 mb-1">Strengths</div>
+                    <ul className="text-sm text-gray-700 list-disc pl-5">
+                      {(Array.isArray(review.strengths) && review.strengths.length ? review.strengths : ['Not available']).map((item, i) => (
+                        <li key={i}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-gray-800 mb-1">Improvements</div>
+                    <ul className="text-sm text-gray-700 list-disc pl-5">
+                      {(Array.isArray(review.improvements) && review.improvements.length ? review.improvements : ['Not available']).map((item, i) => (
+                        <li key={i}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
             ))}
           </div>
         </motion.div>
