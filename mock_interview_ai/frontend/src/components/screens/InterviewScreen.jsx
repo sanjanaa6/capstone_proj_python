@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mic, MicOff, Send, Clock, ChevronRight, ChevronLeft } from 'lucide-react';
+import { Mic, MicOff, Send, Clock, ChevronRight, ChevronLeft, Volume2, VolumeX } from 'lucide-react';
 
 const InterviewScreen = ({ 
   currentQuestion, 
@@ -15,7 +15,49 @@ const InterviewScreen = ({
   const [isRecording, setIsRecording] = useState(false);
   const [timeElapsed, setTimeElapsed] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
+  const [isTtsEnabled, setIsTtsEnabled] = useState(true);
   const textareaRef = useRef(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const saved = window.localStorage.getItem('ttsEnabled');
+      if (saved === null) return;
+      setIsTtsEnabled(saved === 'true');
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      window.localStorage.setItem('ttsEnabled', String(isTtsEnabled));
+    } catch {
+      // ignore
+    }
+    if (!isTtsEnabled && typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+  }, [isTtsEnabled]);
+
+  const speakQuestion = (text) => {
+    if (!isTtsEnabled) return;
+    if (typeof window === 'undefined') return;
+    if (!('speechSynthesis' in window)) return;
+    if (!text || typeof text !== 'string') return;
+
+    try {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(`Question: ${text}`);
+      utterance.rate = 1;
+      utterance.pitch = 1;
+      utterance.volume = 1;
+      window.speechSynthesis.speak(utterance);
+    } catch (e) {
+      console.error('TTS error:', e);
+    }
+  };
 
   // Timer effect
   useEffect(() => {
@@ -35,6 +77,17 @@ const InterviewScreen = ({
       setIsTimerRunning(true);
     }
   }, [currentQuestion, isReviewMode]);
+
+  useEffect(() => {
+    if (!isReviewMode) {
+      speakQuestion(currentQuestion);
+    }
+    return () => {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, [currentQuestion, isReviewMode, isTtsEnabled]);
 
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
@@ -86,24 +139,34 @@ const InterviewScreen = ({
                 <span>{formatTime(timeElapsed)}</span>
               </div>
             </div>
-            {!isReviewMode && (
-              <div className="flex gap-2">
-                <button
-                  onClick={onPreviousQuestion}
-                  disabled={questionNumber === 1}
-                  className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={onNextQuestion}
-                  disabled={questionNumber === totalQuestions}
-                  className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
-            )}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setIsTtsEnabled((v) => !v)}
+                className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors"
+                type="button"
+                aria-label={isTtsEnabled ? 'Disable question announcements' : 'Enable question announcements'}
+              >
+                {isTtsEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+              </button>
+              {!isReviewMode && (
+                <div className="flex gap-2">
+                  <button
+                    onClick={onPreviousQuestion}
+                    disabled={questionNumber === 1}
+                    className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={onNextQuestion}
+                    disabled={questionNumber === totalQuestions}
+                    className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
           
           {/* Progress bar */}
