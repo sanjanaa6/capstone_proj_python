@@ -94,22 +94,47 @@ def review_answer(question: str, answer: str):
             "max_tokens": settings.MAX_TOKENS,
         }
 
-        with httpx.Client(timeout=60) as client:
-            resp = client.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=data)
-            resp.raise_for_status()
-            result = resp.json()
-            content = (
-                result.get("choices", [{}])[0]
-                .get("message", {})
-                .get("content", "")
-            )
-            payload = _extract_json(content)
-            normalized = _normalize_payload(payload)
-            if normalized.get("score") is not None or normalized.get("feedback") or normalized.get("strengths") or normalized.get("improvements"):
-                return normalized
+        try:
+            with httpx.Client(timeout=60) as client:
+                resp = client.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=data)
+                resp.raise_for_status()
+                result = resp.json()
+                content = (
+                    result.get("choices", [{}])[0]
+                    .get("message", {})
+                    .get("content", "")
+                )
+                payload = _extract_json(content)
+                normalized = _normalize_payload(payload)
+                if normalized.get("score") is not None or normalized.get("feedback") or normalized.get("strengths") or normalized.get("improvements"):
+                    return normalized
+                return {
+                    "score": None,
+                    "feedback": content.strip(),
+                    "strengths": [],
+                    "improvements": [],
+                    "confidenceTip": ""
+                }
+        except httpx.HTTPStatusError as e:
             return {
                 "score": None,
-                "feedback": content.strip(),
+                "feedback": f"Review API error: {e.response.status_code}. Please try again later.",
+                "strengths": [],
+                "improvements": [],
+                "confidenceTip": ""
+            }
+        except httpx.TimeoutException:
+            return {
+                "score": None,
+                "feedback": "Review request timed out. Please try again.",
+                "strengths": [],
+                "improvements": [],
+                "confidenceTip": ""
+            }
+        except httpx.RequestError:
+            return {
+                "score": None,
+                "feedback": "Unable to reach the review service (network error). Check your internet/VPN and try again.",
                 "strengths": [],
                 "improvements": [],
                 "confidenceTip": ""

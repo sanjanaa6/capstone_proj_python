@@ -6,6 +6,7 @@ import InterviewScreen from './components/screens/InterviewScreen';
 import ReviewScreen from './components/screens/ReviewScreen';
 import FinalSummaryScreen from './components/screens/FinalSummaryScreen';
 import DashboardOverviewScreen from './components/screens/DashboardOverviewScreen';
+import ChatbotScreen from './components/screens/ChatbotScreen';
 import SettingsScreen from './components/screens/SettingsScreen';
 import DashboardLayout from './components/layout/DashboardLayout';
 import './index.css';
@@ -297,6 +298,7 @@ function App() {
 
     const navItems = [
       { key: 'dashboard', label: 'Overview', icon: Home, disabled: !hasStarted },
+      { key: 'chatbot', label: 'Chatbot', icon: Star },
       { key: 'interview', label: 'Interview', icon: Mic, disabled: !hasStarted },
       {
         key: 'review',
@@ -312,6 +314,7 @@ function App() {
     const activeKey = currentScreen;
     const headerTitleByKey = {
       dashboard: 'Overview',
+      chatbot: 'Chatbot',
       interview: 'Interview',
       review: 'Review',
       summary: 'Summary',
@@ -356,6 +359,9 @@ function App() {
             onContinue={() => setCurrentScreen('interview')}
           />
         );
+
+      case 'chatbot':
+        return wrapDashboard(<ChatbotScreen topic={interviewData.topic} />);
       
       case 'interview':
         return wrapDashboard(
