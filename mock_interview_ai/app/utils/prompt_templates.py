@@ -34,7 +34,17 @@ Question:
 Answer:
 {answer}
 
-Give:
-1. Score out of 10
-2. Constructive feedback
+Rules:
+- If the answer is empty / "I don't know" / meaningless, do NOT give a good score. Give a low score (0-2) and explain what is missing.
+- Keep feedback actionable and specific.
+
+Output format (STRICT):
+Return ONLY valid JSON in this exact shape:
+{
+  "score": 0,
+  "feedback": "...",
+  "strengths": ["..."],
+  "improvements": ["..."],
+  "confidenceTip": "..."
+}
 """

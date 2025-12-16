@@ -21,5 +21,11 @@ async def start_interview(data: InterviewRequest):
 
 @app.post("/submit-answer")
 async def submit_answer(data: AnswerRequest):
-    feedback = review_answer(data.question, data.answer)
-    return {"review": feedback}
+    review = review_answer(data.question, data.answer)
+    return {"review": review}
+
+
+@app.post("/review-answer")
+async def review_answer_endpoint(data: AnswerRequest):
+    review = review_answer(data.question, data.answer)
+    return {"review": review}

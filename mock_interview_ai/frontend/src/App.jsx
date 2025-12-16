@@ -1,13 +1,18 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Home, Mic, Settings, Star, Trophy } from 'lucide-react';
 import LandingScreen from './components/screens/LandingScreen';
 import InterviewScreen from './components/screens/InterviewScreen';
 import ReviewScreen from './components/screens/ReviewScreen';
 import FinalSummaryScreen from './components/screens/FinalSummaryScreen';
+import DashboardOverviewScreen from './components/screens/DashboardOverviewScreen';
+import SettingsScreen from './components/screens/SettingsScreen';
+import DashboardLayout from './components/layout/DashboardLayout';
 import './index.css';
 
 function App() {
   const [currentScreen, setCurrentScreen] = useState('landing');
+  const [activeReviewIndex, setActiveReviewIndex] = useState(0);
   const [interviewData, setInterviewData] = useState({
     topic: '',
     questions: [],
@@ -15,6 +20,13 @@ function App() {
     answers: [],
     reviews: []
   });
+
+  const getLatestScore = () => {
+    if (!Array.isArray(interviewData.reviews) || interviewData.reviews.length === 0) return undefined;
+    const last = interviewData.reviews[interviewData.reviews.length - 1];
+    const s = last?.score;
+    return typeof s === 'number' && Number.isFinite(s) ? s : undefined;
+  };
 
   const parseReviewText = (reviewText, question) => {
     if (!reviewText || typeof reviewText !== 'string') return null;
@@ -99,7 +111,13 @@ function App() {
   };
 
   const normalizeReview = (review, question, answer) => {
-    const fallback = generateMockReview(question, answer);
+    const fallback = {
+      score: undefined,
+      feedback: '',
+      strengths: [],
+      improvements: [],
+      question
+    };
     if (!review) return { ...fallback, answer };
     if (typeof review === 'string') {
       const parsed = parseReviewText(review, question);
@@ -184,7 +202,8 @@ function App() {
       answers: [],
       reviews: []
     });
-    setCurrentScreen('interview');
+    setActiveReviewIndex(0);
+    setCurrentScreen('dashboard');
   };
 
   const handleSubmitAnswer = async (answer, timeElapsed) => {
@@ -193,14 +212,22 @@ function App() {
     
     const newAnswers = [...interviewData.answers, { question: currentQuestion, answer, timeElapsed }];
     const newReviews = [...interviewData.reviews, review];
+    const nextIndex = interviewData.currentQuestionIndex + 1;
     
     setInterviewData({
       ...interviewData,
       answers: newAnswers,
-      reviews: newReviews
+      reviews: newReviews,
+      currentQuestionIndex: nextIndex
     });
+
+    setActiveReviewIndex(newReviews.length - 1);
     
-    setCurrentScreen('review');
+    if (nextIndex >= interviewData.questions.length) {
+      setCurrentScreen('summary');
+    } else {
+      setCurrentScreen('interview');
+    }
   };
 
   const handleNextQuestion = () => {
@@ -234,6 +261,7 @@ function App() {
       answers: [],
       reviews: []
     });
+    setActiveReviewIndex(0);
     setCurrentScreen('landing');
   };
 
@@ -258,14 +286,79 @@ function App() {
   };
 
   const renderScreen = () => {
+    const hasStarted = Array.isArray(interviewData.questions) && interviewData.questions.length > 0;
+    const safeReviewIndex = Math.max(0, Math.min(activeReviewIndex, (interviewData.reviews?.length || 0) - 1));
+    const canViewCurrentReview =
+      Array.isArray(interviewData.answers) &&
+      Array.isArray(interviewData.reviews) &&
+      interviewData.answers.length > safeReviewIndex &&
+      interviewData.reviews.length > safeReviewIndex;
+    const canViewSummary = Array.isArray(interviewData.reviews) && interviewData.reviews.length > 0;
+
+    const navItems = [
+      { key: 'dashboard', label: 'Overview', icon: Home, disabled: !hasStarted },
+      { key: 'interview', label: 'Interview', icon: Mic, disabled: !hasStarted },
+      {
+        key: 'review',
+        label: 'Review',
+        icon: Star,
+        disabled: !canViewCurrentReview,
+        badge: canViewCurrentReview ? `${safeReviewIndex + 1}` : undefined
+      },
+      { key: 'summary', label: 'Summary', icon: Trophy, disabled: !canViewSummary },
+      { key: 'settings', label: 'Settings', icon: Settings }
+    ];
+
+    const activeKey = currentScreen;
+    const headerTitleByKey = {
+      dashboard: 'Overview',
+      interview: 'Interview',
+      review: 'Review',
+      summary: 'Summary',
+      settings: 'Settings'
+    };
+    const headerTitle = headerTitleByKey[currentScreen] || 'Dashboard';
+    const headerSubtitle = hasStarted ? `Topic: ${interviewData.topic || '—'}` : 'Start an interview to unlock the dashboard.';
+
+    const dashboardHeaderRight = hasStarted ? (
+      <button type="button" className="ds-header-btn" onClick={handleRestartInterview}>
+        Restart
+      </button>
+    ) : null;
+
+    const wrapDashboard = (node) => (
+      <DashboardLayout
+        activeKey={activeKey}
+        items={navItems}
+        headerTitle={headerTitle}
+        headerSubtitle={headerSubtitle}
+        onNavigate={(key) => setCurrentScreen(key)}
+        headerRight={dashboardHeaderRight}
+      >
+        {node}
+      </DashboardLayout>
+    );
+
     switch (currentScreen) {
       case 'landing':
         return (
           <LandingScreen onStartInterview={handleStartInterview} />
         );
+
+      case 'dashboard':
+        return wrapDashboard(
+          <DashboardOverviewScreen
+            topic={interviewData.topic}
+            totalQuestions={interviewData.questions.length}
+            answeredCount={interviewData.answers.length}
+            averageScore={calculateOverallScore()}
+            latestScore={getLatestScore()}
+            onContinue={() => setCurrentScreen('interview')}
+          />
+        );
       
       case 'interview':
-        return (
+        return wrapDashboard(
           <InterviewScreen
             currentQuestion={interviewData.questions[interviewData.currentQuestionIndex]}
             questionNumber={interviewData.currentQuestionIndex + 1}
@@ -277,20 +370,23 @@ function App() {
         );
       
       case 'review':
-        const currentReview = interviewData.reviews[interviewData.currentQuestionIndex];
-        const currentAnswer = interviewData.answers[interviewData.currentQuestionIndex];
-        return (
-          <ReviewScreen
-            review={currentReview}
-            question={currentAnswer.question}
-            answer={currentAnswer.answer}
-            onNextQuestion={handleNextQuestion}
-            isLastQuestion={interviewData.currentQuestionIndex === interviewData.questions.length - 1}
-          />
-        );
+        {
+          const safeReviewIndex = Math.max(0, Math.min(activeReviewIndex, (interviewData.reviews?.length || 0) - 1));
+          const currentReview = interviewData.reviews[safeReviewIndex] || {};
+          const currentAnswer = interviewData.answers[safeReviewIndex] || {};
+          return wrapDashboard(
+            <ReviewScreen
+              review={currentReview}
+              question={currentAnswer.question || ''}
+              answer={currentAnswer.answer || ''}
+              onNextQuestion={handleNextQuestion}
+              isLastQuestion={interviewData.currentQuestionIndex === interviewData.questions.length - 1}
+            />
+          );
+        }
       
       case 'summary':
-        return (
+        return wrapDashboard(
           <FinalSummaryScreen
             overallScore={calculateOverallScore()}
             questionReviews={interviewData.reviews}
@@ -300,6 +396,9 @@ function App() {
             onRestartInterview={handleRestartInterview}
           />
         );
+
+      case 'settings':
+        return wrapDashboard(<SettingsScreen />);
       
       default:
         return <LandingScreen onStartInterview={handleStartInterview} />;

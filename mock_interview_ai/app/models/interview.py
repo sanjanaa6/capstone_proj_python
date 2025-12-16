@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 
 class InterviewRequest(BaseModel):
     topic: str
@@ -9,5 +9,8 @@ class AnswerRequest(BaseModel):
     answer: str
 
 class ReviewResponse(BaseModel):
-    score: int
-    feedback: str
+    score: Optional[float] = None
+    feedback: str = ""
+    strengths: List[str] = []
+    improvements: List[str] = []
+    confidenceTip: str = ""
