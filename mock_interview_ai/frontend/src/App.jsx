@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Home, Mic, Settings, Star, Trophy } from 'lucide-react';
+import { Home, Mic, Settings, Star, Trophy, User } from 'lucide-react';
 import LandingScreen from './components/screens/LandingScreen';
 import InterviewScreen from './components/screens/InterviewScreen';
 import ReviewScreen from './components/screens/ReviewScreen';
@@ -8,6 +8,7 @@ import FinalSummaryScreen from './components/screens/FinalSummaryScreen';
 import DashboardOverviewScreen from './components/screens/DashboardOverviewScreen';
 import ChatbotScreen from './components/screens/ChatbotScreen';
 import SettingsScreen from './components/screens/SettingsScreen';
+import ProfileScreen from './components/screens/ProfileScreen';
 import DashboardLayout from './components/layout/DashboardLayout';
 import './index.css';
 
@@ -308,6 +309,7 @@ function App() {
         badge: canViewCurrentReview ? `${safeReviewIndex + 1}` : undefined
       },
       { key: 'summary', label: 'Summary', icon: Trophy, disabled: !canViewSummary },
+      { key: 'profile', label: 'Profile', icon: User },
       { key: 'settings', label: 'Settings', icon: Settings }
     ];
 
@@ -318,6 +320,7 @@ function App() {
       interview: 'Interview',
       review: 'Review',
       summary: 'Summary',
+      profile: 'Profile',
       settings: 'Settings'
     };
     const headerTitle = headerTitleByKey[currentScreen] || 'Dashboard';
@@ -362,6 +365,9 @@ function App() {
 
       case 'chatbot':
         return wrapDashboard(<ChatbotScreen topic={interviewData.topic} />);
+
+      case 'profile':
+        return wrapDashboard(<ProfileScreen />);
       
       case 'interview':
         return wrapDashboard(

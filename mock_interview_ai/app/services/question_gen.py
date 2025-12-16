@@ -7,10 +7,13 @@ from ..utils.prompt_templates import QUESTION_PROMPT
 
 class QuestionGenerator:
     def __init__(self):
-        self.client = httpx.AsyncClient()
+        self.client = httpx.AsyncClient(timeout=60)
     
     async def generate_questions(self, topic: str, num_questions: int = 5) -> List[str]:
         try:
+            if not settings.OPENROUTER_API_KEY:
+                return self._get_fallback_questions(topic, num_questions)
+
             prompt = QUESTION_PROMPT.format(topic=topic)
             
             headers = {
@@ -27,11 +30,15 @@ class QuestionGenerator:
                 "max_tokens": settings.MAX_TOKENS,
             }
             
-            response = await self.client.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                headers=headers,
-                json=data
-            )
+            try:
+                response = await self.client.post(
+                    "https://openrouter.ai/api/v1/chat/completions",
+                    headers=headers,
+                    json=data
+                )
+            except httpx.RequestError as e:
+                print(f"OpenRouter request error while generating questions: {repr(e)}")
+                return self._get_fallback_questions(topic, num_questions)
             
             if response.status_code == 200:
                 result = response.json()
@@ -48,7 +55,7 @@ class QuestionGenerator:
                 raise Exception(f"OpenRouter API error: {response.status_code}")
                 
         except Exception as e:
-            print(f"Error generating questions: {str(e)}")
+            print(f"Error generating questions: {repr(e)}")
             return self._get_fallback_questions(topic, num_questions)
     
     def _parse_questions(self, questions_text: str) -> List[str]:
