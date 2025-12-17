@@ -5,12 +5,18 @@ from app.models.chat import ChatRequest
 from app.services.question_gen import generate_questions
 from app.services.review import review_answer
 from app.services.chat import chat_reply
+import os
 
 app = FastAPI(title="Mock Interview AI")
 
+cors_origins_env = os.getenv("CORS_ORIGINS", "").strip()
+cors_origins = ["http://localhost:5173", "http://127.0.0.1:5173"]
+if cors_origins_env:
+    cors_origins.extend([o.strip() for o in cors_origins_env.split(",") if o.strip()])
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"]

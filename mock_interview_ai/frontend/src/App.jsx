@@ -13,6 +13,7 @@ import DashboardLayout from './components/layout/DashboardLayout';
 import './index.css';
 
 function App() {
+  const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '');
   const [currentScreen, setCurrentScreen] = useState('landing');
   const [activeReviewIndex, setActiveReviewIndex] = useState(0);
   const [interviewData, setInterviewData] = useState({
@@ -147,7 +148,7 @@ function App() {
   const apiService = {
     startInterview: async (topic) => {
       try {
-        const response = await fetch('http://localhost:8000/start-interview', {
+        const response = await fetch(`${API_URL}/start-interview`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -171,7 +172,7 @@ function App() {
 
     submitAnswer: async (question, answer) => {
       try {
-        const response = await fetch('http://localhost:8000/submit-answer', {
+        const response = await fetch(`${API_URL}/submit-answer`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
