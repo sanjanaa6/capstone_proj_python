@@ -19,9 +19,10 @@ class QuestionGenerator:
             headers = {
                 "Authorization": f"Bearer {settings.OPENROUTER_API_KEY}",
                 "Content-Type": "application/json",
-                "HTTP-Referer": "http://localhost:5173",
                 "X-Title": settings.APP_NAME,
             }
+            if settings.OPENROUTER_HTTP_REFERER:
+                headers["HTTP-Referer"] = settings.OPENROUTER_HTTP_REFERER
             
             data = {
                 "model": settings.OPENROUTER_MODEL,

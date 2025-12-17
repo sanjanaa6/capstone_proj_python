@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     OPENROUTER_API_KEY: str
     OPENAI_API_KEY: Optional[str] = None
     GOOGLE_API_KEY: Optional[str] = None
+    OPENROUTER_HTTP_REFERER: Optional[str] = None
     
     # Application Settings
     APP_NAME: str = "Mock Interview AI"

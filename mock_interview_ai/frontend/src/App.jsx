@@ -10,10 +10,10 @@ import ChatbotScreen from './components/screens/ChatbotScreen';
 import SettingsScreen from './components/screens/SettingsScreen';
 import ProfileScreen from './components/screens/ProfileScreen';
 import DashboardLayout from './components/layout/DashboardLayout';
+import { startInterview, submitAnswer } from './api';
 import './index.css';
 
 function App() {
-  const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '');
   const [currentScreen, setCurrentScreen] = useState('landing');
   const [activeReviewIndex, setActiveReviewIndex] = useState(0);
   const [interviewData, setInterviewData] = useState({
@@ -144,50 +144,6 @@ function App() {
     return { ...fallback, answer };
   };
 
-  // API service functions
-  const apiService = {
-    startInterview: async (topic) => {
-      try {
-        const response = await fetch(`${API_URL}/start-interview`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ topic }),
-        });
-        const data = await response.json();
-        return data.questions || [];
-      } catch (error) {
-        console.error('Error starting interview:', error);
-        // Fallback questions for demo
-        return [
-          "Tell me about your experience with React and modern frontend development.",
-          "How do you handle state management in large applications?",
-          "Describe a challenging technical problem you've solved recently.",
-          "How do you ensure code quality and maintainability in your projects?",
-          "What are your thoughts on the future of web development?"
-        ];
-      }
-    },
-
-    submitAnswer: async (question, answer) => {
-      try {
-        const response = await fetch(`${API_URL}/submit-answer`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ question, answer }),
-        });
-        const data = await response.json();
-        return normalizeReview(data.review, question, answer);
-      } catch (error) {
-        console.error('Error submitting answer:', error);
-        return normalizeReview(null, question, answer);
-      }
-    }
-  };
-
   const generateMockReview = (question, answer) => ({
     score: Math.random() * 4 + 6, // Random score between 6-10
     feedback: "Good answer with room for improvement. Your understanding of the concepts is solid, but adding more real-world examples would strengthen your response.",
@@ -197,7 +153,21 @@ function App() {
   });
 
   const handleStartInterview = async (topic) => {
-    const questions = await apiService.startInterview(topic);
+    let questions = [];
+    try {
+      const data = await startInterview({ topic });
+      questions = data?.questions || [];
+    } catch (error) {
+      console.error('Error starting interview:', error);
+      // Fallback questions for demo
+      questions = [
+        "Tell me about your experience with React and modern frontend development.",
+        "How do you handle state management in large applications?",
+        "Describe a challenging technical problem you've solved recently.",
+        "How do you ensure code quality and maintainability in your projects?",
+        "What are your thoughts on the future of web development?"
+      ];
+    }
     setInterviewData({
       topic,
       questions,
@@ -211,7 +181,14 @@ function App() {
 
   const handleSubmitAnswer = async (answer, timeElapsed) => {
     const currentQuestion = interviewData.questions[interviewData.currentQuestionIndex];
-    const review = await apiService.submitAnswer(currentQuestion, answer);
+    let review;
+    try {
+      const data = await submitAnswer({ question: currentQuestion, answer });
+      review = normalizeReview(data?.review, currentQuestion, answer);
+    } catch (error) {
+      console.error('Error submitting answer:', error);
+      review = normalizeReview(null, currentQuestion, answer);
+    }
     
     const newAnswers = [...interviewData.answers, { question: currentQuestion, answer, timeElapsed }];
     const newReviews = [...interviewData.reviews, review];

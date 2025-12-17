@@ -1,9 +1,9 @@
 import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Bot, User, Sparkles } from 'lucide-react';
+import { chat } from '../../api';
 
 const ChatbotScreen = ({ topic }) => {
-  const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '');
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
@@ -34,12 +34,7 @@ const ChatbotScreen = ({ topic }) => {
     setIsSending(true);
 
     try {
-      const response = await fetch(`${API_URL}/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: apiMessages.concat({ role: 'user', content: text }), topic })
-      });
-      const data = await response.json();
+      const data = await chat({ messages: apiMessages.concat({ role: 'user', content: text }), topic });
       const reply = typeof data?.reply === 'string' ? data.reply : 'Sorry, I could not generate a reply.';
       setMessages((prev) => [...prev, { role: 'assistant', content: reply }]);
     } catch (e) {
