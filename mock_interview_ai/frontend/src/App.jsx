@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Home, Mic, Settings, Star, Trophy, User } from 'lucide-react';
+import { Home, Mic, Settings, Star, Trophy, User, Cpu } from 'lucide-react';
 import LandingScreen from './components/screens/LandingScreen';
 import InterviewScreen from './components/screens/InterviewScreen';
 import ReviewScreen from './components/screens/ReviewScreen';
@@ -9,8 +9,9 @@ import DashboardOverviewScreen from './components/screens/DashboardOverviewScree
 import ChatbotScreen from './components/screens/ChatbotScreen';
 import SettingsScreen from './components/screens/SettingsScreen';
 import ProfileScreen from './components/screens/ProfileScreen';
+import RLAnalyticsScreen from './components/screens/RLAnalyticsScreen';
 import DashboardLayout from './components/layout/DashboardLayout';
-import { startInterview, submitAnswer } from './api';
+import { startInterview, submitAnswer, startRLInterview, submitRLStep } from './api';
 import './index.css';
 
 function App() {
@@ -21,7 +22,11 @@ function App() {
     questions: [],
     currentQuestionIndex: 0,
     answers: [],
-    reviews: []
+    reviews: [],
+    isRLMode: false,
+    rlDifficulty: 'Medium',
+    rlActionName: '',
+    rlHistory: []
   });
 
   const getLatestScore = () => {
@@ -47,8 +52,6 @@ function App() {
       const allLabels = Array.isArray(labels) ? labels : [labels];
       const labelAlternation = allLabels.map((l) => escapeRegExp(l)).join('|');
 
-      // Allow variants like:
-      // "Strengths: ...", "**Strengths**: ...", "Strengths - ...", "### Strengths"
       const header = `(?:\\*{0,2}\\s*)?(?:${labelAlternation})(?:\\s*\\*{0,2})?`;
       const after = `(?:\\s*(?::|-|—)\\s*)?`;
       const stopLabels = ['Score', 'Feedback', 'Strengths', 'Improvements', 'Areas for Improvement', 'Areas of Improvement', 'Suggestions', 'Suggestions for Improvement', 'Weaknesses', 'Opportunities', 'Opportunity Areas', 'What went well', 'What to improve'];
@@ -84,7 +87,6 @@ function App() {
         .replace(/\*\*/g, '')
         .trim();
 
-      // Prefer line-based bullets/numbering
       const byLines = cleaned
         .split('\n')
         .map((ln) => ln.trim())
@@ -94,7 +96,6 @@ function App() {
 
       if (byLines.length > 1) return byLines;
 
-      // Fallback: comma-separated or single-line bullets
       return cleaned
         .split(/,|•|\u2022|\s+-\s+/g)
         .map((s) => s.trim())
@@ -144,36 +145,50 @@ function App() {
     return { ...fallback, answer };
   };
 
-  const generateMockReview = (question, answer) => ({
-    score: Math.random() * 4 + 6, // Random score between 6-10
-    feedback: "Good answer with room for improvement. Your understanding of the concepts is solid, but adding more real-world examples would strengthen your response.",
-    strengths: ["Clear communication", "Good technical understanding", "Structured response"],
-    improvements: ["Could provide more specific examples", "Consider mentioning best practices"],
-    question: question
-  });
-
-  const handleStartInterview = async (topic) => {
+  const handleStartInterview = async (topic, isRLMode = true) => {
     let questions = [];
-    try {
-      const data = await startInterview({ topic });
-      questions = data?.questions || [];
-    } catch (error) {
-      console.error('Error starting interview:', error);
-      // Fallback questions for demo
-      questions = [
-        "Tell me about your experience with React and modern frontend development.",
-        "How do you handle state management in large applications?",
-        "Describe a challenging technical problem you've solved recently.",
-        "How do you ensure code quality and maintainability in your projects?",
-        "What are your thoughts on the future of web development?"
-      ];
+    let initialDifficulty = 'Medium';
+    let initialAction = 'MAINTAIN_DEEPEN';
+
+    if (isRLMode) {
+      try {
+        const data = await startRLInterview({ topic });
+        if (data?.initial_question) {
+          questions = [data.initial_question];
+        }
+        initialDifficulty = data?.initial_difficulty || 'Medium';
+        initialAction = data?.initial_action || 'MAINTAIN_DEEPEN';
+      } catch (error) {
+        console.error('Error starting RL interview, falling back:', error);
+      }
     }
+
+    if (questions.length === 0) {
+      try {
+        const data = await startInterview({ topic });
+        questions = data?.questions || [];
+      } catch (error) {
+        console.error('Error starting standard interview:', error);
+        questions = [
+          `Tell me about your experience with ${topic}.`,
+          `How do you handle performance challenges in ${topic}?`,
+          `Describe a challenging problem involving ${topic} you solved recently.`,
+          `What are best practices when building systems with ${topic}?`,
+          `Where do you see ${topic} evolving in the future?`
+        ];
+      }
+    }
+
     setInterviewData({
       topic,
       questions,
       currentQuestionIndex: 0,
       answers: [],
-      reviews: []
+      reviews: [],
+      isRLMode,
+      rlDifficulty: initialDifficulty,
+      rlActionName: initialAction,
+      rlHistory: []
     });
     setActiveReviewIndex(0);
     setCurrentScreen('dashboard');
@@ -182,28 +197,79 @@ function App() {
   const handleSubmitAnswer = async (answer, timeElapsed) => {
     const currentQuestion = interviewData.questions[interviewData.currentQuestionIndex];
     let review;
-    try {
-      const data = await submitAnswer({ question: currentQuestion, answer });
-      review = normalizeReview(data?.review, currentQuestion, answer);
-    } catch (error) {
-      console.error('Error submitting answer:', error);
-      review = normalizeReview(null, currentQuestion, answer);
+    let nextQuestion = null;
+    let newDifficulty = interviewData.rlDifficulty;
+    let newActionName = interviewData.rlActionName;
+    let updatedHistory = [...(interviewData.rlHistory || [])];
+
+    if (interviewData.isRLMode) {
+      try {
+        const prevScore = getLatestScore();
+        const rlRes = await submitRLStep({
+          topic: interviewData.topic,
+          question: currentQuestion,
+          answer,
+          previous_score: prevScore,
+          current_difficulty: interviewData.rlDifficulty,
+          turn_index: interviewData.currentQuestionIndex + 1,
+          total_questions: 5
+        });
+
+        review = normalizeReview(rlRes, currentQuestion, answer);
+        nextQuestion = rlRes.next_question;
+        newDifficulty = rlRes.new_difficulty;
+        newActionName = rlRes.action_name;
+        updatedHistory.push({
+          turn: interviewData.currentQuestionIndex + 1,
+          question: currentQuestion,
+          score: rlRes.score,
+          reward: rlRes.reward,
+          action_name: rlRes.action_name,
+          new_difficulty: rlRes.new_difficulty,
+          explanation: rlRes.explanation
+        });
+      } catch (err) {
+        console.error('Error in RL submit step:', err);
+        try {
+          const data = await submitAnswer({ question: currentQuestion, answer });
+          review = normalizeReview(data?.review, currentQuestion, answer);
+        } catch (e) {
+          review = normalizeReview(null, currentQuestion, answer);
+        }
+      }
+    } else {
+      try {
+        const data = await submitAnswer({ question: currentQuestion, answer });
+        review = normalizeReview(data?.review, currentQuestion, answer);
+      } catch (error) {
+        console.error('Error submitting answer:', error);
+        review = normalizeReview(null, currentQuestion, answer);
+      }
     }
-    
+
     const newAnswers = [...interviewData.answers, { question: currentQuestion, answer, timeElapsed }];
     const newReviews = [...interviewData.reviews, review];
     const nextIndex = interviewData.currentQuestionIndex + 1;
     
+    let updatedQuestions = [...interviewData.questions];
+    if (nextQuestion && !updatedQuestions[nextIndex]) {
+      updatedQuestions.push(nextQuestion);
+    }
+
     setInterviewData({
       ...interviewData,
+      questions: updatedQuestions,
       answers: newAnswers,
       reviews: newReviews,
-      currentQuestionIndex: nextIndex
+      currentQuestionIndex: nextIndex,
+      rlDifficulty: newDifficulty,
+      rlActionName: newActionName,
+      rlHistory: updatedHistory
     });
 
     setActiveReviewIndex(newReviews.length - 1);
     
-    if (nextIndex >= interviewData.questions.length) {
+    if (nextIndex >= 5 || (nextIndex >= updatedQuestions.length && !nextQuestion)) {
       setCurrentScreen('summary');
     } else {
       setCurrentScreen('interview');
@@ -239,7 +305,11 @@ function App() {
       questions: [],
       currentQuestionIndex: 0,
       answers: [],
-      reviews: []
+      reviews: [],
+      isRLMode: false,
+      rlDifficulty: 'Medium',
+      rlActionName: '',
+      rlHistory: []
     });
     setActiveReviewIndex(0);
     setCurrentScreen('landing');
@@ -256,13 +326,11 @@ function App() {
   };
 
   const calculateCommunicationScore = () => {
-    // Mock calculation based on answer lengths and quality
-    return Math.random() * 2 + 7; // Random between 7-9
+    return Math.random() * 2 + 7;
   };
 
   const calculateConfidenceScore = () => {
-    // Mock calculation based on response times and consistency
-    return Math.random() * 2 + 6; // Random between 6-8
+    return Math.random() * 2 + 6;
   };
 
   const renderScreen = () => {
@@ -277,6 +345,7 @@ function App() {
 
     const navItems = [
       { key: 'dashboard', label: 'Overview', icon: Home, disabled: !hasStarted },
+      { key: 'rl', label: 'RL Analytics', icon: Cpu },
       { key: 'chatbot', label: 'Chatbot', icon: Star },
       { key: 'interview', label: 'Interview', icon: Mic, disabled: !hasStarted },
       {
@@ -294,6 +363,7 @@ function App() {
     const activeKey = currentScreen;
     const headerTitleByKey = {
       dashboard: 'Overview',
+      rl: 'RL Analytics',
       chatbot: 'Chatbot',
       interview: 'Interview',
       review: 'Review',
@@ -333,12 +403,17 @@ function App() {
         return wrapDashboard(
           <DashboardOverviewScreen
             topic={interviewData.topic}
-            totalQuestions={interviewData.questions.length}
+            totalQuestions={Math.max(interviewData.questions.length, 5)}
             answeredCount={interviewData.answers.length}
             averageScore={calculateOverallScore()}
             latestScore={getLatestScore()}
             onContinue={() => setCurrentScreen('interview')}
           />
+        );
+
+      case 'rl':
+        return wrapDashboard(
+          <RLAnalyticsScreen rlHistory={interviewData.rlHistory} />
         );
 
       case 'chatbot':
@@ -352,10 +427,13 @@ function App() {
           <InterviewScreen
             currentQuestion={interviewData.questions[interviewData.currentQuestionIndex]}
             questionNumber={interviewData.currentQuestionIndex + 1}
-            totalQuestions={interviewData.questions.length}
+            totalQuestions={Math.max(interviewData.questions.length, 5)}
             onSubmitAnswer={handleSubmitAnswer}
             onNextQuestion={handleNextQuestion}
             onPreviousQuestion={handlePreviousQuestion}
+            isRLMode={interviewData.isRLMode}
+            rlDifficulty={interviewData.rlDifficulty}
+            rlActionName={interviewData.rlActionName}
           />
         );
       

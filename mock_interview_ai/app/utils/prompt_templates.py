@@ -1,3 +1,4 @@
+
 QUESTION_PROMPT = """
 You are an expert interviewer.
 
@@ -40,11 +41,11 @@ Rules:
 
 Output format (STRICT):
 Return ONLY valid JSON in this exact shape:
-{
+{{
   "score": 0,
   "feedback": "...",
   "strengths": ["..."],
   "improvements": ["..."],
   "confidenceTip": "..."
-}
+}}
 """

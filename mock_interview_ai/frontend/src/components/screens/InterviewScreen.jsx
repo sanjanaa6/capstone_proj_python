@@ -10,7 +10,10 @@ const InterviewScreen = ({
   onSubmitAnswer, 
   onNextQuestion, 
   onPreviousQuestion,
-  isReviewMode = false 
+  isReviewMode = false,
+  isRLMode = false,
+  rlDifficulty = 'Medium',
+  rlActionName = ''
 }) => {
   const [answer, setAnswer] = useState('');
   const [isRecording, setIsRecording] = useState(false);
@@ -529,12 +532,17 @@ const InterviewScreen = ({
                 {currentQuestion}
               </h2>
               <div className="flex flex-wrap gap-2">
-                <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm">
+                <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
                   Technical
                 </span>
-                <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm">
-                  Medium
+                <span className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm font-semibold">
+                  Difficulty: {rlDifficulty || 'Medium'}
                 </span>
+                {isRLMode && (
+                  <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-semibold flex items-center gap-1">
+                    ⚡ RL Agent: {rlActionName || 'MAINTAIN_DEEPEN'}
+                  </span>
+                )}
               </div>
             </div>
           </div>

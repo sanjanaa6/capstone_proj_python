@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Mic, Brain, Target, Sparkles, ArrowRight } from 'lucide-react';
+import { Mic, Brain, Target, Sparkles, ArrowRight, Cpu } from 'lucide-react';
 
 const LandingScreen = ({ onStartInterview }) => {
   const [topic, setTopic] = useState('');
+  const [useRL, setUseRL] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e) => {
@@ -11,7 +12,7 @@ const LandingScreen = ({ onStartInterview }) => {
     if (!topic.trim()) return;
     
     setIsLoading(true);
-    await onStartInterview(topic);
+    await onStartInterview(topic, useRL);
     setIsLoading(false);
   };
 
@@ -22,9 +23,9 @@ const LandingScreen = ({ onStartInterview }) => {
       description: "Contextual questions tailored to your role and experience"
     },
     {
-      icon: <Mic className="w-6 h-6" />,
-      title: "Voice Support",
-      description: "Practice speaking with voice-to-text transcription"
+      icon: <Cpu className="w-6 h-6" />,
+      title: "RL Adaptive Agent",
+      description: "Q-Learning Bellman agent dynamically tuning difficulty & probe depth"
     },
     {
       icon: <Target className="w-6 h-6" />,
@@ -61,7 +62,7 @@ const LandingScreen = ({ onStartInterview }) => {
             AI Mock Interview
           </h1>
           <p className="subtitle-lg mb-8 mx-auto" style={{ maxWidth: 672 }}>
-            Practice interviews. Build confidence. Get AI feedback.
+            Practice interviews. Build confidence. Powered by Reinforcement Learning.
           </p>
         </motion.div>
 
@@ -72,14 +73,14 @@ const LandingScreen = ({ onStartInterview }) => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.4 }}
           className="mx-auto mb-8"
-          style={{ maxWidth: 448 }}
+          style={{ maxWidth: 460 }}
         >
-          <div style={{ position: 'relative' }}>
+          <div style={{ position: 'relative', marginBottom: '1rem' }}>
             <input
               type="text"
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
-              placeholder="Enter job role or topic (e.g., 'Frontend Developer')"
+              placeholder="Enter job role or topic (e.g., 'Python System Design')"
               className="input-field"
               style={{ paddingRight: 48, fontSize: 18 }}
               disabled={isLoading}
@@ -114,6 +115,40 @@ const LandingScreen = ({ onStartInterview }) => {
                 <ArrowRight style={{ width: 20, height: 20 }} />
               )}
             </motion.button>
+          </div>
+
+          {/* RL Toggle Box */}
+          <div
+            onClick={() => setUseRL(!useRL)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '0.75rem 1rem',
+              borderRadius: '12px',
+              background: useRL ? 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)' : '#f8fafc',
+              border: useRL ? '1px solid #bfdbfe' : '1px solid #e2e8f0',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <div className="flex items-center gap-2" style={{ textAlign: 'left' }}>
+              <Cpu className="w-5 h-5" style={{ color: useRL ? '#2563eb' : '#64748b' }} />
+              <div>
+                <div style={{ fontWeight: 600, fontSize: '0.9rem', color: useRL ? '#1e3a8a' : '#334155' }}>
+                  Enable RL Adaptive Agent Mode
+                </div>
+                <div style={{ fontSize: '0.75rem', color: useRL ? '#3b82f6' : '#64748b' }}>
+                  Q-learning agent dynamically tunes question difficulty
+                </div>
+              </div>
+            </div>
+            <input
+              type="checkbox"
+              checked={useRL}
+              onChange={() => {}}
+              style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+            />
           </div>
         </motion.form>
 
@@ -168,7 +203,7 @@ const LandingScreen = ({ onStartInterview }) => {
           </span>
           <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ width: 8, height: 8, background: '#3b82f6', borderRadius: 9999 }}></span>
-            Powered by AI
+            Q-Learning RL Agent Active
           </span>
           <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ width: 8, height: 8, background: '#a855f7', borderRadius: 9999 }}></span>

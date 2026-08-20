@@ -13,7 +13,7 @@ def _find_env_file() -> str:
 
 class Settings(BaseSettings):
     # API Keys
-    OPENROUTER_API_KEY: str
+    OPENROUTER_API_KEY: Optional[str] = None
     OPENAI_API_KEY: Optional[str] = None
     GOOGLE_API_KEY: Optional[str] = None
     OPENROUTER_HTTP_REFERER: Optional[str] = None
