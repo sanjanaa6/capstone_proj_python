@@ -354,12 +354,19 @@ const InterviewScreen = ({
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleSubmit = () => {
-    if (answer.trim()) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
+    if (answer.trim() && !isSubmitting) {
+      setIsSubmitting(true);
       setIsTimerRunning(false);
-      onSubmitAnswer(answer, timeElapsed);
-      setAnswer('');
-      setTimeElapsed(0);
+      try {
+        await onSubmitAnswer(answer, timeElapsed);
+        setAnswer('');
+        setTimeElapsed(0);
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -599,11 +606,20 @@ const InterviewScreen = ({
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={handleSubmit}
-                    disabled={!answer.trim()}
+                    disabled={!answer.trim() || isSubmitting}
                     className="btn-primary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <Send className="w-4 h-4" />
-                    Submit Answer
+                    {isSubmitting ? (
+                      <>
+                        <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                        Loading Next Question...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-4 h-4" />
+                        Submit Answer
+                      </>
+                    )}
                   </motion.button>
                 </div>
               </div>
