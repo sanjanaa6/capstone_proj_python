@@ -21,7 +21,7 @@ const InterviewScreen = ({
   const [timeElapsed, setTimeElapsed] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [isTtsEnabled, setIsTtsEnabled] = useState(true);
-  const [isCameraEnabled, setIsCameraEnabled] = useState(false);
+  const [isCameraEnabled, setIsCameraEnabled] = useState(true);
   const [cameraError, setCameraError] = useState('');
   const [proctorStatus, setProctorStatus] = useState('Camera off');
   const [warningCount, setWarningCount] = useState(0);
@@ -461,48 +461,62 @@ const InterviewScreen = ({
         className="screen-inner"
       >
         {/* Progress bar and question counter */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2 text-gray-600">
-              <span className="font-medium">Question {questionNumber} of {totalQuestions}</span>
-              <div className="flex items-center gap-1 text-sm">
-                <Clock className="w-4 h-4" />
+        <div className="card mb-6" style={{ padding: '20px 24px' }}>
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+            <div className="flex items-center gap-3">
+              <span className="font-bold text-lg text-slate-800">
+                Question {questionNumber} of {totalQuestions}
+              </span>
+              <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 text-sm font-bold border border-indigo-200">
+                <Clock className="w-4 h-4 text-indigo-600 animate-pulse" />
                 <span>{formatTime(timeElapsed)}</span>
               </div>
             </div>
+
             <div className="flex items-center gap-2">
               <button
                 onClick={() => {
                   setCameraError('');
                   setIsCameraEnabled((v) => !v);
                 }}
-                className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors"
+                className={`px-3 py-2 rounded-xl border transition-all flex items-center gap-2 text-xs font-bold ${
+                  isCameraEnabled 
+                    ? 'bg-emerald-50 border-emerald-300 text-emerald-700 shadow-sm' 
+                    : 'bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200'
+                }`}
                 type="button"
                 aria-label={isCameraEnabled ? 'Disable camera preview' : 'Enable camera preview'}
               >
-                {isCameraEnabled ? <CameraOff className="w-4 h-4" /> : <Camera className="w-4 h-4" />}
+                {isCameraEnabled ? <Camera className="w-4 h-4 text-emerald-600" /> : <CameraOff className="w-4 h-4" />}
+                <span>{isCameraEnabled ? 'Camera Active' : 'Camera Off'}</span>
               </button>
+
               <button
                 onClick={() => setIsTtsEnabled((v) => !v)}
-                className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors"
+                className={`p-2.5 rounded-xl border transition-all ${
+                  isTtsEnabled
+                    ? 'bg-indigo-50 border-indigo-200 text-indigo-700'
+                    : 'bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200'
+                }`}
                 type="button"
                 aria-label={isTtsEnabled ? 'Disable question announcements' : 'Enable question announcements'}
               >
-                {isTtsEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+                {isTtsEnabled ? <Volume2 className="w-4 h-4 text-indigo-600" /> : <VolumeX className="w-4 h-4" />}
               </button>
+
               {!isReviewMode && (
-                <div className="flex gap-2">
+                <div className="flex gap-1.5 ml-1">
                   <button
                     onClick={onPreviousQuestion}
                     disabled={questionNumber === 1}
-                    className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="p-2.5 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                   >
                     <ChevronLeft className="w-4 h-4" />
                   </button>
                   <button
                     onClick={onNextQuestion}
                     disabled={questionNumber === totalQuestions}
-                    className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="p-2.5 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                   >
                     <ChevronRight className="w-4 h-4" />
                   </button>
@@ -512,12 +526,17 @@ const InterviewScreen = ({
           </div>
           
           {/* Progress bar */}
-          <div className="w-full" style={{ background: '#e5e7eb', borderRadius: 9999, height: 8 }}>
+          <div className="w-full bg-slate-100 rounded-full" style={{ height: 10, padding: 2, border: '1px solid #e2e8f0' }}>
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${(questionNumber / totalQuestions) * 100}%` }}
-              transition={{ duration: 0.5 }}
-              style={{ background: '#2563eb', height: 8, borderRadius: 9999 }}
+              transition={{ duration: 0.5, ease: 'easeOut' }}
+              style={{
+                background: 'linear-gradient(90deg, #6366f1 0%, #a855f7 50%, #06b6d4 100%)',
+                height: 6,
+                borderRadius: 9999,
+                boxShadow: '0 0 12px rgba(99, 102, 241, 0.4)'
+              }}
             />
           </div>
         </div>
@@ -525,28 +544,46 @@ const InterviewScreen = ({
         {/* Question card */}
         <motion.div
           key={currentQuestion}
-          initial={{ opacity: 0, scale: 0.95 }}
+          initial={{ opacity: 0, scale: 0.96 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.3 }}
+          transition={{ duration: 0.35 }}
           className="card mb-6"
+          style={{ padding: '28px' }}
         >
-          <div className="flex items-start gap-3 mb-4">
-            <div style={{ width: 32, height: 32, borderRadius: 9999, background: 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: '#2563eb', fontWeight: 600, fontSize: 14 }}>
-              {questionNumber}
+          <div className="flex items-start gap-4 mb-4">
+            <div style={{
+              width: 44,
+              height: 44,
+              borderRadius: 14,
+              background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+              color: 'white',
+              fontWeight: 800,
+              fontSize: 16,
+              boxShadow: '0 4px 14px rgba(99, 102, 241, 0.35)'
+            }}>
+              Q{questionNumber}
             </div>
             <div className="flex-1">
-              <h2 className="text-xl md:text-2xl font-semibold text-gray-800 mb-2">
+              <h2 className="text-xl md:text-2xl font-bold text-slate-900 mb-3" style={{ lineHeight: 1.45 }}>
                 {currentQuestion}
               </h2>
-              <div className="flex flex-wrap gap-2">
-                <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
+              <div className="flex flex-wrap items-center gap-2.5">
+                <span className="pill pill-success">
                   Technical
                 </span>
-                <span className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm font-semibold">
+                <span className={`pill ${
+                  rlDifficulty === 'Easy' ? 'pill-easy' :
+                  rlDifficulty === 'Medium' ? 'pill-medium' :
+                  rlDifficulty === 'Hard' ? 'pill-hard' : 'pill-expert'
+                }`}>
                   Difficulty: {rlDifficulty || 'Medium'}
                 </span>
                 {isRLMode && (
-                  <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-semibold flex items-center gap-1">
+                  <span className="pill" style={{ background: 'linear-gradient(135deg, #fae8ff 0%, #f5d0fe 100%)', color: '#7e22ce', border: '1px solid #e9d5ff' }}>
                     ⚡ RL Agent: {rlActionName || 'MAINTAIN_DEEPEN'}
                   </span>
                 )}
@@ -560,11 +597,11 @@ const InterviewScreen = ({
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.2 }}
+            transition={{ duration: 0.3, delay: 0.15 }}
             className="card"
           >
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+            <div className="mb-2">
+              <label className="block text-sm font-bold text-slate-700 mb-2">
                 Your Answer
               </label>
               <textarea
@@ -574,40 +611,46 @@ const InterviewScreen = ({
                 onKeyDown={handleKeyDown}
                 placeholder="Type your answer here... (Ctrl+Enter to submit)"
                 className="input-field"
-                style={{ minHeight: 120, resize: 'none' }}
+                style={{ minHeight: 140, resize: 'none', fontSize: 15, lineHeight: 1.6 }}
                 disabled={isRecording}
               />
-              <div className="flex items-center justify-between mt-2">
-                <span className="text-sm text-gray-500">
+              <div className="flex flex-wrap items-center justify-between gap-3 mt-3">
+                <span className="text-xs text-slate-500 font-medium">
                   {answer.length} characters • Press Ctrl+Enter to submit
                 </span>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                   <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
+                    whileHover={{ scale: 1.06 }}
+                    whileTap={{ scale: 0.94 }}
                     onClick={toggleRecording}
-                    className={`rounded-full ${
-                      isRecording 
-                        ? ''
-                        : ''
-                    }`}
+                    type="button"
                     style={{
-                      padding: 12,
-                      border: 'none',
+                      padding: '10px 18px',
+                      borderRadius: 14,
+                      border: isRecording ? '1px solid #fca5a5' : '1px solid #cbd5e1',
                       cursor: 'pointer',
-                      background: isRecording ? '#ef4444' : '#f3f4f6',
-                      color: isRecording ? 'white' : '#4b5563',
+                      background: isRecording ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)' : '#f8fafc',
+                      color: isRecording ? 'white' : '#475569',
+                      fontWeight: 600,
+                      fontSize: 13,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      boxShadow: isRecording ? '0 4px 14px rgba(239, 68, 68, 0.4)' : 'none',
                       transition: 'all 0.2s ease'
                     }}
                   >
-                    {isRecording ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+                    {isRecording ? <MicOff className="w-4 h-4 animate-pulse" /> : <Mic className="w-4 h-4 text-indigo-600" />}
+                    <span>{isRecording ? 'Stop Voice' : 'Voice Input'}</span>
                   </motion.button>
+
                   <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
+                    whileHover={{ scale: 1.04 }}
+                    whileTap={{ scale: 0.96 }}
                     onClick={handleSubmit}
                     disabled={!answer.trim() || isSubmitting}
-                    className="btn-primary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="btn-primary"
+                    style={{ padding: '10px 22px', fontSize: 14 }}
                   >
                     {isSubmitting ? (
                       <>
@@ -632,11 +675,11 @@ const InterviewScreen = ({
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
-                  className="bg-red-50 border border-red-200 rounded-lg p-3"
+                  className="bg-red-50 border border-red-200 rounded-xl p-3 mt-3"
                 >
                   <div className="flex items-center gap-2 text-red-600">
-                    <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                    <span className="text-sm font-medium">Recording... Click the mic button to stop</span>
+                    <div className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse"></div>
+                    <span className="text-sm font-semibold">Recording live voice... Speak clearly into your microphone</span>
                   </div>
                 </motion.div>
               )}
@@ -648,9 +691,9 @@ const InterviewScreen = ({
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
-                  className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mt-3"
+                  className="bg-amber-50 border border-amber-200 rounded-xl p-3 mt-3"
                 >
-                  <div className="text-yellow-800 text-sm font-medium">{recordingError}</div>
+                  <div className="text-amber-800 text-sm font-medium">{recordingError}</div>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -663,78 +706,112 @@ const InterviewScreen = ({
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
-            className="card bg-gray-50"
+            className="card bg-slate-50 text-center"
           >
-            <p className="text-gray-600 italic">
+            <p className="text-slate-600 font-medium">
               Answer submitted • Time taken: {formatTime(timeElapsed)}
             </p>
           </motion.div>
         )}
 
+        {/* Floating Always-Open Camera HUD on Top Right */}
         {typeof document !== 'undefined' && (isCameraEnabled || !!cameraError) && !isReviewMode && createPortal(
-          <div
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: -10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: -10 }}
             style={{
               position: 'fixed',
-              top: 16,
-              right: 16,
+              top: 86,
+              right: 28,
               zIndex: 9999,
-              width: 280
+              width: 270,
+              boxShadow: '0 20px 40px rgba(15, 23, 42, 0.4), 0 0 20px rgba(99, 102, 241, 0.2)',
+              borderRadius: 20,
+              padding: 14,
+              background: 'rgba(15, 23, 42, 0.92)',
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
+              border: '1px solid rgba(255, 255, 255, 0.18)'
             }}
           >
+            {/* HUD Header */}
+            <div style={{ display: 'flex', itemsCenter: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ width: 8, height: 8, borderRadius: 9999, background: '#10b981', boxShadow: '0 0 8px #10b981' }} className="animate-pulse" />
+                <span style={{ color: 'white', fontSize: 11, fontWeight: 800, letterSpacing: '0.06em' }}>AI PROCTOR CAMERA</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsCameraEnabled(false)}
+                style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: '#94a3b8', borderRadius: 6, padding: '2px 8px', cursor: 'pointer', fontSize: 11, fontWeight: 600 }}
+              >
+                Close
+              </button>
+            </div>
+
             {!cameraError && (
-              <div style={{ display: 'grid', gap: 8, marginBottom: 8 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 10 }}>
                 <div
                   style={{
-                    padding: '10px 12px',
-                    borderRadius: 10,
-                    fontSize: 12,
-                    fontWeight: 700,
-                    border: '1px solid rgba(255,255,255,0.18)',
+                    padding: '5px 8px',
+                    borderRadius: 8,
+                    fontSize: 10,
+                    fontWeight: 800,
+                    textAlign: 'center',
+                    border: '1px solid rgba(255,255,255,0.15)',
                     color: 'white',
                     background:
                       proctorStatus === 'Face detected'
-                        ? 'rgba(34, 197, 94, 0.35)'
+                        ? 'rgba(16, 185, 129, 0.35)'
                         : proctorStatus === 'Looking away' || proctorStatus === 'No face detected'
-                          ? 'rgba(239, 68, 68, 0.35)'
+                          ? 'rgba(239, 68, 68, 0.4)'
                           : 'rgba(107, 114, 128, 0.35)'
                   }}
                 >
                   {proctorStatus === 'Face detected'
-                    ? 'LOOKING AT SCREEN'
+                    ? '🟢 FOCUSED'
                     : proctorStatus === 'Looking away'
-                      ? 'LOOKING AWAY'
+                      ? '⚠️ LOOKING AWAY'
                       : proctorStatus === 'No face detected'
-                        ? 'NO FACE DETECTED'
+                        ? '❌ NO FACE'
                         : String(proctorStatus || '').toUpperCase()}
                 </div>
                 <div
                   style={{
-                    padding: '10px 12px',
-                    borderRadius: 10,
-                    fontSize: 12,
+                    padding: '5px 8px',
+                    borderRadius: 8,
+                    fontSize: 10,
                     fontWeight: 800,
-                    border: '1px solid rgba(255,255,255,0.18)',
-                    color: 'white',
-                    background: 'rgba(234, 179, 8, 0.35)'
+                    textAlign: 'center',
+                    border: '1px solid rgba(255,255,255,0.15)',
+                    color: '#fde047',
+                    background: 'rgba(234, 179, 8, 0.3)'
                   }}
                 >
-                  WARNING {warningCount}/6
+                  WARNINGS: {warningCount}/6
                 </div>
               </div>
             )}
 
+            {/* Video preview container */}
             <div
               style={{
                 borderRadius: 14,
                 overflow: 'hidden',
-                border: '1px solid rgba(255,255,255,0.18)',
-                background: 'rgba(17, 24, 39, 0.95)'
+                position: 'relative',
+                border: proctorStatus === 'Looking away' || proctorStatus === 'No face detected'
+                  ? '2px solid #ef4444'
+                  : '1px solid rgba(255,255,255,0.2)',
+                background: '#090d16',
+                boxShadow: proctorStatus === 'Looking away' ? '0 0 15px rgba(239, 68, 68, 0.5)' : 'none'
               }}
             >
               {cameraError ? (
-                <div style={{ padding: 12, color: 'white' }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>Camera</div>
-                  <div style={{ fontSize: 12, opacity: 0.9 }}>{cameraError}</div>
+                <div style={{ padding: 16, color: 'white', textAlign: 'center' }}>
+                  <CameraOff className="w-8 h-8 text-rose-400 mx-auto mb-2" />
+                  <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>Camera Access Required</div>
+                  <div style={{ fontSize: 11, color: '#94a3b8' }}>{cameraError}</div>
                 </div>
               ) : (
                 <div style={{ position: 'relative' }}>
@@ -742,16 +819,16 @@ const InterviewScreen = ({
                     ref={videoRef}
                     muted
                     playsInline
-                    style={{ width: '100%', height: 170, objectFit: 'cover', display: 'block' }}
+                    style={{ width: '100%', height: 155, objectFit: 'cover', display: 'block', transform: 'scaleX(-1)' }}
                   />
                   <canvas
                     ref={canvasRef}
-                    style={{ position: 'absolute', inset: 0, width: '100%', height: 170 }}
+                    style={{ position: 'absolute', inset: 0, width: '100%', height: 155, transform: 'scaleX(-1)' }}
                   />
                 </div>
               )}
             </div>
-          </div>,
+          </motion.div>,
           document.body
         )}
       </motion.div>
