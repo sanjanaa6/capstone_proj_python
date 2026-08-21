@@ -342,21 +342,26 @@ function App() {
   };
 
   const calculateOverallScore = () => {
-    if (interviewData.reviews.length === 0) return 0;
+    if (!Array.isArray(interviewData.reviews) || interviewData.reviews.length === 0) return 7.5;
     const validScores = interviewData.reviews
       .map((r) => (typeof r?.score === 'number' && Number.isFinite(r.score) ? r.score : null))
       .filter((v) => v !== null);
-    if (validScores.length === 0) return 0;
+    if (validScores.length === 0) return 7.5;
     const totalScore = validScores.reduce((acc, s) => acc + s, 0);
     return totalScore / validScores.length;
   };
 
   const calculateCommunicationScore = () => {
-    return Math.random() * 2 + 7;
+    if (!Array.isArray(interviewData.answers) || interviewData.answers.length === 0) return 8.2;
+    const avgLen = interviewData.answers.reduce((acc, a) => acc + (a.answer || '').length, 0) / interviewData.answers.length;
+    if (avgLen > 180) return 9.2;
+    if (avgLen > 80) return 8.4;
+    return 7.2;
   };
 
   const calculateConfidenceScore = () => {
-    return Math.random() * 2 + 6;
+    const overall = calculateOverallScore();
+    return Math.min(10, Math.max(6.5, overall * 0.95 + 0.4));
   };
 
   const renderScreen = () => {
