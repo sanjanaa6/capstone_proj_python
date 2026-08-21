@@ -5,6 +5,54 @@ import re
 from ..config import settings
 from ..utils.prompt_templates import QUESTION_PROMPT
 
+def extract_clean_single_question(text: str, fallback: str) -> str:
+    if not text:
+        return fallback
+
+    # 1. Strip <think>...</think> XML blocks
+    text = re.sub(r"<think>[\s\S]*?</think>", "", text, flags=re.IGNORECASE)
+
+    # 2. If text contains thinking/reasoning intros
+    reasoning_pattern = r"(?:here['’]?s\s+a\s+thinking\s+process|thinking\s+process|deconstruct\s+the\s+role|\*\*analyze\s+the\s+request|we\s+need\s+to\s+output|potential\s+question:?|thus\s+output:?)"
+    
+    if re.search(reasoning_pattern, text, re.IGNORECASE):
+        # Look for explicit double-quoted question or prompt at the end
+        quoted_matches = re.findall(r'"([^"\n\r]{20,})"', text)
+        if quoted_matches:
+            for q in reversed(quoted_matches):
+                if len(q.strip()) >= 20 and not any(k in q.lower() for k in ["analyze", "deconstruct", "thinking", "strategy:", "target difficulty", "output:", "we need", "potential question"]):
+                    text = q
+                    break
+        if re.search(reasoning_pattern, text, re.IGNORECASE):
+            lines = [ln.strip().strip('"').strip("'") for ln in text.split('\n') if ln.strip()]
+            for ln in reversed(lines):
+                if len(ln) >= 20 and not any(k in ln.lower() for k in ["analyze", "deconstruct", "thinking", "output:", "format:", "we need", "potential question", "should we include", "make sure"]):
+                    text = ln
+                    break
+            else:
+                return fallback
+
+    # 3. Clean headers, bullet points, markdown bold, leading quotes
+    text = re.sub(r"^\s*(?:\d+[\.\)]|[-*•]|\*\*Question\s*\d*\*\*:?|Question:?)\s*", "", text, flags=re.IGNORECASE | re.MULTILINE)
+    text = text.replace('\u2011', '-').replace('\u2013', '-').replace('\u2014', '--')
+    text = text.replace('\u201c', '"').replace('\u201d', '"').replace('\u2018', "'").replace('\u2019', "'")
+    text = text.replace('\u00a0', ' ')
+    text = text.strip().strip('"').strip("'")
+
+    # 4. Final safety check: if text still contains meta-reasoning phrases, reject it
+    meta_phrases = [
+        "here's a thinking", "analyze the request", "deconstruct the role", 
+        "target difficulty:", "rl action strategy", "we need to output", 
+        "potential question:", "thus output:"
+    ]
+    if any(k in text.lower() for k in meta_phrases):
+        return fallback
+
+    if len(text) < 15:
+        return fallback
+
+    return text
+
 def _clean_text(text: str) -> str:
     if not text:
         return ""
@@ -22,7 +70,7 @@ class QuestionGenerator:
             if not settings.OPENROUTER_API_KEY:
                 return self._get_fallback_questions(topic, num_questions)
 
-            prompt = QUESTION_PROMPT.format(topic=topic)
+            prompt = f"{QUESTION_PROMPT.format(topic=topic)}\n\nCRITICAL: Do NOT output thinking steps, scratchpads, or internal reasoning blocks. Output ONLY the questions directly."
             
             headers = {
                 "Authorization": f"Bearer {settings.OPENROUTER_API_KEY}",
@@ -71,8 +119,9 @@ class QuestionGenerator:
         action_name: str,
         turn_index: int = 1
     ) -> str:
+        fallback = self._get_adaptive_fallback_question(topic, difficulty, action_name, turn_index)
         if not settings.OPENROUTER_API_KEY:
-            return self._get_adaptive_fallback_question(topic, difficulty, action_name, turn_index)
+            return fallback
 
         adaptive_prompt = f"""You are an expert AI technical interviewer conducting a live interview.
 Topic / Role / Job Description: {topic}
@@ -81,7 +130,7 @@ RL Action Strategy: {action_name}
 Question Number: {turn_index}
 
 Generate exactly ONE highly relevant, realistic technical or scenario interview question for this target difficulty ({difficulty}).
-Return ONLY the single question text without markdown headers, bullet points, or numbering."""
+CRITICAL INSTRUCTION: Output ONLY the single final question text. Do NOT include thinking steps, internal analysis, scratchpads, markdown headers, bullet points, or numbering."""
 
         headers = {
             "Authorization": f"Bearer {settings.OPENROUTER_API_KEY}",
@@ -106,20 +155,25 @@ Return ONLY the single question text without markdown headers, bullet points, or
             )
             if response.status_code == 200:
                 result = response.json()
-                q_text = result.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
-                if q_text:
-                    cleaned = re.sub(r"^\s*(?:\d+[\.\)]|[-*•])\s*", "", q_text).strip('"').strip()
-                    cleaned = _clean_text(cleaned)
-                    if cleaned:
-                        return cleaned
+                choices = result.get("choices") or []
+                if choices and isinstance(choices, list) and len(choices) > 0:
+                    msg = choices[0].get("message") or {}
+                    q_text = msg.get("content") or ""
+                    if isinstance(q_text, str) and q_text.strip():
+                        clean_q = extract_clean_single_question(q_text, fallback)
+                        if clean_q:
+                            return clean_q
         except Exception as e:
             print(f"Error generating adaptive question via LLM: {e}")
 
-        return self._get_adaptive_fallback_question(topic, difficulty, action_name, turn_index)
+        return fallback
 
     def _parse_questions(self, questions_text: str) -> List[str]:
         if not questions_text:
             return []
+
+        # Strip <think>...</think> blocks
+        questions_text = re.sub(r"<think>[\s\S]*?</think>", "", questions_text, flags=re.IGNORECASE)
 
         try:
             payload = json.loads(questions_text)
@@ -128,7 +182,7 @@ Return ONLY the single question text without markdown headers, bullet points, or
                 for q in payload["questions"]:
                     if isinstance(q, str):
                         q2 = _clean_text(q.strip().strip('"'))
-                        if q2 and len(q2) >= 12 and not q2.lower().startswith(("user safety", "note:", "here are")):
+                        if q2 and len(q2) >= 12 and not q2.lower().startswith(("user safety", "note:", "here are", "thinking")):
                             cleaned.append(q2)
                 if cleaned:
                     return cleaned
@@ -141,7 +195,7 @@ Return ONLY the single question text without markdown headers, bullet points, or
         for line in lines:
             line = re.sub(r"^\s*(?:\d+\s*[\.|\)]\s*|[-*•]\s+)", "", line).strip()
             line_lower = line.lower()
-            if line_lower in {"technical", "medium", "easy", "hard", "questions:", '"questions": [', 'questions: ['} or line_lower.startswith(("user safety", "safety:", "note:", "here are", '"questions"')):
+            if line_lower in {"technical", "medium", "easy", "hard", "questions:", '"questions": [', 'questions: ['} or line_lower.startswith(("user safety", "safety:", "note:", "here are", '"questions"', "here's a thinking", "analyze the request", "deconstruct the role")):
                 continue
             if line and len(line) >= 12:
                 questions.append(_clean_text(line))
