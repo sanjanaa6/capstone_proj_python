@@ -5,7 +5,37 @@ import re
 from ..config import settings
 from ..utils.prompt_templates import QUESTION_PROMPT
 
-def extract_clean_single_question(text: str, fallback: str) -> str:
+def _get_clean_topic_name(topic: str) -> str:
+    if not topic:
+        return "Software Development"
+    
+    # 1. Try to extract target role or Job Role if formatted
+    m_role = re.search(r"(?:Target\s*Role|Job\s*Role):\s*([^|\n,]+)", topic, re.IGNORECASE)
+    if m_role and m_role.group(1).strip():
+        role = m_role.group(1).strip()
+        role = re.sub(r"\(.*?\)", "", role).strip()
+        return role
+
+    # 2. If topic contains pipes |, split by pipe and take first valid role segment
+    if "|" in topic:
+        parts = [p.strip() for p in topic.split("|") if p.strip()]
+        for p in parts:
+            if not p.lower().startswith(("focus:", "level:", "job description", "requirements:", "responsibilities:")):
+                clean_p = re.sub(r"^(?:Job\s*Role|Target\s*Role):\s*", "", p, flags=re.IGNORECASE).strip()
+                clean_p = re.sub(r"\(.*?\)", "", clean_p).strip()
+                if clean_p:
+                    return clean_p
+
+    # 3. Truncate if extremely long (> 45 chars)
+    if len(topic) > 45:
+        first_line = topic.split("\n")[0].split(".")[0].strip()
+        if len(first_line) > 45:
+            first_line = first_line[:42] + "..."
+        return first_line
+
+    return topic.strip()
+
+def extract_clean_single_question(text: str, fallback: str, raw_topic: str = "") -> str:
     if not text:
         return fallback
 
@@ -16,7 +46,6 @@ def extract_clean_single_question(text: str, fallback: str) -> str:
     reasoning_pattern = r"(?:here['’]?s\s+a\s+thinking\s+process|thinking\s+process|deconstruct\s+the\s+role|\*\*analyze\s+the\s+request|we\s+need\s+to\s+output|potential\s+question:?|thus\s+output:?)"
     
     if re.search(reasoning_pattern, text, re.IGNORECASE):
-        # Look for explicit double-quoted question or prompt at the end
         quoted_matches = re.findall(r'"([^"\n\r]{20,})"', text)
         if quoted_matches:
             for q in reversed(quoted_matches):
@@ -39,7 +68,12 @@ def extract_clean_single_question(text: str, fallback: str) -> str:
     text = text.replace('\u00a0', ' ')
     text = text.strip().strip('"').strip("'")
 
-    # 4. Final safety check: if text still contains meta-reasoning phrases, reject it
+    # 4. If raw_topic is long and echoed in question, replace with clean concise role name
+    if raw_topic and len(raw_topic) > 40 and raw_topic in text:
+        clean_name = _get_clean_topic_name(raw_topic)
+        text = text.replace(raw_topic, clean_name)
+
+    # 5. Final safety check: if text still contains meta-reasoning phrases, reject it
     meta_phrases = [
         "here's a thinking", "analyze the request", "deconstruct the role", 
         "target difficulty:", "rl action strategy", "we need to output", 
@@ -123,14 +157,17 @@ class QuestionGenerator:
         if not settings.OPENROUTER_API_KEY:
             return fallback
 
+        clean_role = _get_clean_topic_name(topic)
+
         adaptive_prompt = f"""You are an expert AI technical interviewer conducting a live interview.
-Topic / Role / Job Description: {topic}
+Target Role / Domain: {clean_role}
+Full Job Context / Description: {topic}
 Target Difficulty Level: {difficulty}
 RL Action Strategy: {action_name}
 Question Number: {turn_index}
 
-Generate exactly ONE highly relevant, realistic technical or scenario interview question for this target difficulty ({difficulty}).
-CRITICAL INSTRUCTION: Output ONLY the single final question text. Do NOT include thinking steps, internal analysis, scratchpads, markdown headers, bullet points, or numbering."""
+Generate exactly ONE highly relevant, realistic technical or scenario interview question tailored for a {clean_role} position at {difficulty} difficulty.
+CRITICAL INSTRUCTION: Output ONLY the single final question text. Do NOT include thinking steps, internal analysis, scratchpads, markdown headers, bullet points, numbering, or raw job description strings."""
 
         headers = {
             "Authorization": f"Bearer {settings.OPENROUTER_API_KEY}",
@@ -160,7 +197,7 @@ CRITICAL INSTRUCTION: Output ONLY the single final question text. Do NOT include
                     msg = choices[0].get("message") or {}
                     q_text = msg.get("content") or ""
                     if isinstance(q_text, str) and q_text.strip():
-                        clean_q = extract_clean_single_question(q_text, fallback)
+                        clean_q = extract_clean_single_question(q_text, fallback, raw_topic=topic)
                         if clean_q:
                             return clean_q
         except Exception as e:
@@ -203,12 +240,13 @@ CRITICAL INSTRUCTION: Output ONLY the single final question text. Do NOT include
         return questions
     
     def _get_fallback_questions(self, topic: str, num_questions: int) -> List[str]:
+        clean_role = _get_clean_topic_name(topic)
         fallback_questions = [
-            f"Explain the architectural building blocks and key concepts involved in {topic}.",
-            f"How do you approach state management, performance optimization, and memory efficiency in {topic}?",
-            f"What are common design anti-patterns in {topic}, and how do you prevent them in production?",
-            f"Describe a challenging production bug or bottleneck you solved while working with {topic}.",
-            f"How do you handle asynchronous operations, error handling, and fault tolerance in {topic}?"
+            f"Explain the architectural building blocks and key concepts involved in {clean_role}.",
+            f"How do you approach state management, performance optimization, and memory efficiency in {clean_role}?",
+            f"What are common design anti-patterns in {clean_role}, and how do you prevent them in production?",
+            f"Describe a challenging production bug or bottleneck you solved while working with {clean_role}.",
+            f"How do you handle asynchronous operations, error handling, and fault tolerance in {clean_role}?"
         ]
         return fallback_questions[:num_questions]
 
@@ -219,32 +257,33 @@ CRITICAL INSTRUCTION: Output ONLY the single final question text. Do NOT include
         action_name: str,
         turn_index: int
     ) -> str:
+        clean_role = _get_clean_topic_name(topic)
         bank = {
             "Easy": [
-                f"What are the core fundamentals and primary use cases of {topic}?",
-                f"Can you explain the basic syntax, execution context, and core building blocks in {topic}?",
-                f"What is the primary motivation for adopting {topic} versus traditional alternatives?"
+                f"What are the core fundamentals and primary use cases of {clean_role}?",
+                f"Can you explain the basic syntax, execution context, and core building blocks in {clean_role}?",
+                f"What is the primary motivation for adopting {clean_role} versus traditional alternatives?"
             ],
             "Medium": [
-                f"How would you optimize performance and manage data structures when building with {topic}?",
-                f"What are the common anti-patterns or concurrency edge cases in {topic} and how do you resolve them?",
-                f"Explain how error propagation, async tasks, and validation pipelines operate in {topic}."
+                f"How would you optimize performance and manage data structures when building with {clean_role}?",
+                f"What are the common anti-patterns or concurrency edge cases in {clean_role} and how do you resolve them?",
+                f"Explain how error propagation, async tasks, and validation pipelines operate in {clean_role}."
             ],
             "Hard": [
-                f"How does {topic} handle memory allocation, garbage collection, and event loop execution under high throughput?",
-                f"Describe how you would debug a memory leak or deadlocked thread pool in a {topic} production system.",
-                f"Compare the underlying performance trade-offs of {topic} against an alternative architectural paradigm."
+                f"How does {clean_role} handle memory allocation, garbage collection, and event loop execution under high throughput?",
+                f"Describe how you would debug a memory leak or deadlocked thread pool in a {clean_role} production system.",
+                f"Compare the underlying performance trade-offs of {clean_role} against an alternative architectural paradigm."
             ],
             "Expert": [
-                f"Design a distributed, highly-available cluster architecture centered around {topic} with sub-10ms failover.",
-                f"Walk me through a technical post-mortem analysis of a cascading failure in a {topic} microservices mesh.",
-                f"How would you architect a zero-downtime database migration strategy for a high-traffic {topic} backend?"
+                f"Design a distributed, highly-available cluster architecture centered around {clean_role} with sub-10ms failover.",
+                f"Walk me through a technical post-mortem analysis of a cascading failure in a {clean_role} microservices mesh.",
+                f"How would you architect a zero-downtime database migration strategy for a high-traffic {clean_role} backend?"
             ]
         }
         
         diff_questions = bank.get(difficulty, bank["Medium"])
         if action_name == "BEHAVIORAL_TRADEOFF":
-            return f"Describe an architectural trade-off decision involving {topic} where you had to compromise between latency and consistency under tight deadlines."
+            return f"Describe an architectural trade-off decision involving {clean_role} where you had to compromise between latency and consistency under tight deadlines."
         
         return diff_questions[(turn_index - 1) % len(diff_questions)]
 
