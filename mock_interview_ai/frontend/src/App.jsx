@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Home, Mic, Settings, Star, Trophy, User, Cpu } from 'lucide-react';
+import { Home, Mic, Settings, Star, Trophy, User, Cpu, Briefcase } from 'lucide-react';
 import LandingScreen from './components/screens/LandingScreen';
+import LoginScreen from './components/screens/LoginScreen';
+import JobDescriptionSetupScreen from './components/screens/JobDescriptionSetupScreen';
 import InterviewScreen from './components/screens/InterviewScreen';
 import ReviewScreen from './components/screens/ReviewScreen';
 import FinalSummaryScreen from './components/screens/FinalSummaryScreen';
@@ -17,6 +19,8 @@ import './index.css';
 function App() {
   const [currentScreen, setCurrentScreen] = useState('landing');
   const [activeReviewIndex, setActiveReviewIndex] = useState(0);
+  const [candidateUser, setCandidateUser] = useState(null);
+
   const [interviewData, setInterviewData] = useState({
     topic: '',
     questions: [],
@@ -145,6 +149,11 @@ function App() {
     return { ...fallback, answer };
   };
 
+  const handleLoginSuccess = (userData) => {
+    setCandidateUser(userData);
+    setCurrentScreen('job-setup');
+  };
+
   const handleStartInterview = async (topic, isRLMode = true) => {
     let questions = [];
     let initialDifficulty = 'Medium';
@@ -191,7 +200,7 @@ function App() {
       rlHistory: []
     });
     setActiveReviewIndex(0);
-    setCurrentScreen('dashboard');
+    setCurrentScreen('interview');
   };
 
   const handleSubmitAnswer = async (answer, timeElapsed) => {
@@ -312,7 +321,7 @@ function App() {
       rlHistory: []
     });
     setActiveReviewIndex(0);
-    setCurrentScreen('landing');
+    setCurrentScreen('job-setup');
   };
 
   const calculateOverallScore = () => {
@@ -345,9 +354,9 @@ function App() {
 
     const navItems = [
       { key: 'dashboard', label: 'Overview', icon: Home, disabled: !hasStarted },
+      { key: 'interview', label: 'Interview Studio', icon: Mic, disabled: !hasStarted },
       { key: 'rl', label: 'RL Analytics', icon: Cpu },
       { key: 'chatbot', label: 'Chatbot', icon: Star },
-      { key: 'interview', label: 'Interview', icon: Mic, disabled: !hasStarted },
       {
         key: 'review',
         label: 'Review',
@@ -365,18 +374,18 @@ function App() {
       dashboard: 'Overview',
       rl: 'RL Analytics',
       chatbot: 'Chatbot',
-      interview: 'Interview',
+      interview: 'Interview Studio',
       review: 'Review',
       summary: 'Summary',
       profile: 'Profile',
       settings: 'Settings'
     };
     const headerTitle = headerTitleByKey[currentScreen] || 'Dashboard';
-    const headerSubtitle = hasStarted ? `Topic: ${interviewData.topic || '—'}` : 'Start an interview to unlock the dashboard.';
+    const headerSubtitle = hasStarted ? `Topic: ${interviewData.topic || '—'}` : 'Configure Job Setup to start practice.';
 
     const dashboardHeaderRight = hasStarted ? (
       <button type="button" className="ds-header-btn" onClick={handleRestartInterview}>
-        Restart
+        New Setup
       </button>
     ) : null;
 
@@ -388,6 +397,9 @@ function App() {
         headerSubtitle={headerSubtitle}
         onNavigate={(key) => setCurrentScreen(key)}
         headerRight={dashboardHeaderRight}
+        candidateUser={candidateUser}
+        onNavigateJobSetup={() => setCurrentScreen('job-setup')}
+        onNavigateHome={() => setCurrentScreen('landing')}
       >
         {node}
       </DashboardLayout>
@@ -396,7 +408,28 @@ function App() {
     switch (currentScreen) {
       case 'landing':
         return (
-          <LandingScreen onStartInterview={handleStartInterview} />
+          <LandingScreen
+            onStartInterview={handleStartInterview}
+            onNavigateLogin={() => setCurrentScreen('login')}
+            onNavigateJobSetup={() => setCurrentScreen('job-setup')}
+            candidateUser={candidateUser}
+          />
+        );
+
+      case 'login':
+        return (
+          <LoginScreen
+            onLoginSuccess={handleLoginSuccess}
+            onNavigateHome={() => setCurrentScreen('landing')}
+          />
+        );
+
+      case 'job-setup':
+        return wrapDashboard(
+          <JobDescriptionSetupScreen
+            onStartInterview={handleStartInterview}
+            candidateProfile={candidateUser}
+          />
         );
 
       case 'dashboard':
@@ -469,7 +502,14 @@ function App() {
         return wrapDashboard(<SettingsScreen />);
       
       default:
-        return <LandingScreen onStartInterview={handleStartInterview} />;
+        return (
+          <LandingScreen
+            onStartInterview={handleStartInterview}
+            onNavigateLogin={() => setCurrentScreen('login')}
+            onNavigateJobSetup={() => setCurrentScreen('job-setup')}
+            candidateUser={candidateUser}
+          />
+        );
     }
   };
 
