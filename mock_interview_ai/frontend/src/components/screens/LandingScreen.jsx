@@ -99,31 +99,31 @@ const LandingScreen = ({ onStartInterview }) => {
               onChange={(e) => setTopic(e.target.value)}
               placeholder="Enter job role or topic (e.g., 'Python System Design')"
               className="input-field"
-              style={{ paddingRight: 56, fontSize: 17, height: 56 }}
+              style={{ paddingRight: 56, fontSize: 16, height: 58 }}
               disabled={isLoading}
             />
             <motion.button
               type="submit"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+              whileHover={{ scale: 1.06 }}
+              whileTap={{ scale: 0.94 }}
               disabled={isLoading || !topic.trim()}
               style={{
                 position: 'absolute',
                 right: 8,
                 top: '50%',
                 transform: 'translateY(-50%)',
-                width: 40,
-                height: 40,
-                borderRadius: 12,
+                width: 44,
+                height: 44,
+                borderRadius: 14,
                 border: 'none',
                 cursor: isLoading || !topic.trim() ? 'not-allowed' : 'pointer',
                 opacity: isLoading || !topic.trim() ? 0.5 : 1,
-                background: 'linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%)',
+                background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 50%, #3b82f6 100%)',
                 color: 'white',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: '0 4px 12px rgba(79, 70, 229, 0.35)'
+                boxShadow: '0 4px 15px rgba(99, 102, 241, 0.4)'
               }}
             >
               {isLoading ? (
@@ -137,6 +137,39 @@ const LandingScreen = ({ onStartInterview }) => {
                 <ArrowRight className="w-5 h-5" />
               )}
             </motion.button>
+          </div>
+
+          {/* Preset Topic Quick Chips */}
+          <div className="flex flex-wrap items-center justify-center gap-2 mb-6" style={{ marginTop: '-0.4rem' }}>
+            <span style={{ fontSize: 12, color: '#64748b', fontWeight: 600, marginRight: 4 }}>Popular Topics:</span>
+            {[
+              'Python System Design',
+              'React & Frontend Architecture',
+              'Distributed Systems',
+              'Data Structures & Algorithms',
+              'ML & AI Engineering'
+            ].map((preset) => (
+              <motion.button
+                key={preset}
+                type="button"
+                whileHover={{ scale: 1.04, y: -1 }}
+                whileTap={{ scale: 0.96 }}
+                onClick={() => setTopic(preset)}
+                style={{
+                  fontSize: 12,
+                  fontWeight: 600,
+                  padding: '4px 12px',
+                  borderRadius: 9999,
+                  background: 'rgba(255, 255, 255, 0.85)',
+                  border: '1px solid #cbd5e1',
+                  color: '#475569',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                {preset}
+              </motion.button>
+            ))}
           </div>
 
           {/* Interactive RL Toggle Box */}
