@@ -2,8 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Mic, MicOff, Send, Clock, ChevronRight, ChevronLeft, Volume2, VolumeX, 
-  Camera, CameraOff, Sparkles, Cpu, AlertTriangle, CheckCircle2, HelpCircle, 
-  Maximize2, RefreshCw
+  Camera, CameraOff, Sparkles, Cpu, AlertTriangle, CheckCircle2, HelpCircle 
 } from 'lucide-react';
 
 const InterviewScreen = ({ 
@@ -462,42 +461,73 @@ const InterviewScreen = ({
       >
         {/* Full-Screen Top Header Control Bar */}
         <div className="card w-full" style={{ padding: '16px 24px', background: 'rgba(255, 255, 255, 0.95)' }}>
-          <div className="flex flex-wrap items-center justify-between gap-4">
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
             
             {/* Left: Question Counter & Timer */}
-            <div className="flex items-center gap-4 flex-wrap">
-              <div className="flex items-center gap-2">
-                <span className="px-3 py-1 rounded-xl bg-indigo-600 text-white font-extrabold text-xs tracking-wider uppercase shadow-md shadow-indigo-200">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{
+                  padding: '4px 12px',
+                  borderRadius: '10px',
+                  background: '#4f46e5',
+                  color: 'white',
+                  fontWeight: 800,
+                  fontSize: '11px',
+                  letterSpacing: '0.05em',
+                  textTransform: 'uppercase',
+                  boxShadow: '0 4px 12px rgba(79, 70, 229, 0.3)'
+                }}>
                   AI Studio
                 </span>
-                <span className="font-bold text-base md:text-lg text-slate-800">
-                  Question <span className="text-indigo-600">{questionNumber}</span> of {totalQuestions}
+
+                <span style={{ fontWeight: 800, fontSize: '16px', color: '#0f172a' }}>
+                  Question <span style={{ color: '#4f46e5' }}>{questionNumber}</span> of {totalQuestions}
                 </span>
               </div>
 
-              <div className="h-5 w-px bg-slate-200 hidden sm:block" />
+              <div style={{ width: 1, height: 20, background: '#cbd5e1' }} />
 
-              <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900 text-amber-300 text-sm font-bold shadow-inner border border-slate-700">
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '6px 14px',
+                borderRadius: '9999px',
+                background: '#0f172a',
+                color: '#fde047',
+                fontSize: '13px',
+                fontWeight: 700,
+                border: '1px solid #334155'
+              }}>
                 <Clock className="w-4 h-4 text-amber-400 animate-pulse" />
-                <span className="font-mono">{formatTime(timeElapsed)}</span>
+                <span style={{ fontFamily: 'monospace' }}>{formatTime(timeElapsed)}</span>
               </div>
             </div>
 
             {/* Right: Audio, Camera & Question Controls */}
-            <div className="flex items-center gap-2 flex-wrap">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
               {/* TTS Speaker Toggle */}
               <button
                 type="button"
                 onClick={() => setIsTtsEnabled((v) => !v)}
-                className={`px-3 py-2 rounded-xl border transition-all flex items-center gap-2 text-xs font-bold ${
-                  isTtsEnabled
-                    ? 'bg-indigo-50 border-indigo-200 text-indigo-700 shadow-sm'
-                    : 'bg-slate-100 border-slate-200 text-slate-500 hover:bg-slate-200'
-                }`}
+                style={{
+                  padding: '8px 14px',
+                  borderRadius: '12px',
+                  border: isTtsEnabled ? '1px solid #c7d2fe' : '1px solid #cbd5e1',
+                  background: isTtsEnabled ? '#e0e7ff' : '#f1f5f9',
+                  color: isTtsEnabled ? '#3730a3' : '#475569',
+                  fontWeight: 700,
+                  fontSize: '13px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
                 title={isTtsEnabled ? 'Disable Speech Readout' : 'Enable Speech Readout'}
               >
                 {isTtsEnabled ? <Volume2 className="w-4 h-4 text-indigo-600" /> : <VolumeX className="w-4 h-4" />}
-                <span className="hidden sm:inline">{isTtsEnabled ? 'Audio Active' : 'Audio Off'}</span>
+                <span>{isTtsEnabled ? 'Audio Active' : 'Audio Off'}</span>
               </button>
 
               {/* Camera Proctor Toggle */}
@@ -507,11 +537,20 @@ const InterviewScreen = ({
                   setCameraError('');
                   setIsCameraEnabled((v) => !v);
                 }}
-                className={`px-3 py-2 rounded-xl border transition-all flex items-center gap-2 text-xs font-bold ${
-                  isCameraEnabled
-                    ? 'bg-emerald-50 border-emerald-300 text-emerald-700 shadow-sm'
-                    : 'bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200'
-                }`}
+                style={{
+                  padding: '8px 14px',
+                  borderRadius: '12px',
+                  border: isCameraEnabled ? '1px solid #a7f3d0' : '1px solid #cbd5e1',
+                  background: isCameraEnabled ? '#d1fae5' : '#f1f5f9',
+                  color: isCameraEnabled ? '#065f46' : '#475569',
+                  fontWeight: 700,
+                  fontSize: '13px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
               >
                 {isCameraEnabled ? <Camera className="w-4 h-4 text-emerald-600" /> : <CameraOff className="w-4 h-4" />}
                 <span>{isCameraEnabled ? 'Proctor Active' : 'Proctor Off'}</span>
@@ -519,12 +558,23 @@ const InterviewScreen = ({
 
               {/* Navigation Controls */}
               {!isReviewMode && (
-                <div className="flex items-center gap-1.5 ml-2 border-l border-slate-200 pl-2">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: '6px', paddingLeft: '8px', borderLeft: '1px solid #cbd5e1' }}>
                   <button
                     type="button"
                     onClick={onPreviousQuestion}
                     disabled={questionNumber === 1}
-                    className="p-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                    style={{
+                      padding: '8px',
+                      borderRadius: '10px',
+                      background: '#f1f5f9',
+                      border: '1px solid #cbd5e1',
+                      color: '#334155',
+                      cursor: questionNumber === 1 ? 'not-allowed' : 'pointer',
+                      opacity: questionNumber === 1 ? 0.35 : 1,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
                     title="Previous Question"
                   >
                     <ChevronLeft className="w-4 h-4" />
@@ -533,7 +583,18 @@ const InterviewScreen = ({
                     type="button"
                     onClick={onNextQuestion}
                     disabled={questionNumber === totalQuestions}
-                    className="p-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                    style={{
+                      padding: '8px',
+                      borderRadius: '10px',
+                      background: '#f1f5f9',
+                      border: '1px solid #cbd5e1',
+                      color: '#334155',
+                      cursor: questionNumber === totalQuestions ? 'not-allowed' : 'pointer',
+                      opacity: questionNumber === totalQuestions ? 0.35 : 1,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
                     title="Next Question"
                   >
                     <ChevronRight className="w-4 h-4" />
@@ -544,7 +605,7 @@ const InterviewScreen = ({
           </div>
 
           {/* Animated Gradient Progress Bar */}
-          <div className="w-full bg-slate-100 rounded-full mt-3 overflow-hidden" style={{ height: 6 }}>
+          <div style={{ width: '100%', background: '#e2e8f0', borderRadius: '9999px', marginTop: '12px', height: '6px', overflow: 'hidden' }}>
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${(questionNumber / totalQuestions) * 100}%` }}
@@ -552,7 +613,7 @@ const InterviewScreen = ({
               style={{
                 background: 'linear-gradient(90deg, #6366f1 0%, #a855f7 50%, #06b6d4 100%)',
                 height: '100%',
-                borderRadius: 9999,
+                borderRadius: '9999px',
                 boxShadow: '0 0 10px rgba(99, 102, 241, 0.5)'
               }}
             />
@@ -563,7 +624,7 @@ const InterviewScreen = ({
         <div className="studio-grid">
           
           {/* Main Column (Left): Question & Workspace */}
-          <div className="flex flex-col gap-5">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             
             {/* Question Display Card */}
             <motion.div
@@ -578,7 +639,7 @@ const InterviewScreen = ({
                 padding: '28px'
               }}
             >
-              <div className="flex items-start gap-4">
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
                 <div style={{
                   width: 48,
                   height: 48,
@@ -596,12 +657,12 @@ const InterviewScreen = ({
                   Q{questionNumber}
                 </div>
 
-                <div className="flex-1">
-                  <h2 className="text-xl md:text-2xl font-extrabold text-slate-900 mb-4" style={{ lineHeight: 1.4, letterSpacing: '-0.01em' }}>
+                <div style={{ flex: 1 }}>
+                  <h2 style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a', marginBottom: '16px', lineHeight: 1.45, letterSpacing: '-0.01em' }}>
                     {currentQuestion}
                   </h2>
 
-                  <div className="flex flex-wrap items-center gap-2.5">
+                  <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '10px' }}>
                     <span className="pill pill-success">
                       <Sparkles className="w-3.5 h-3.5" />
                       Technical
@@ -635,13 +696,13 @@ const InterviewScreen = ({
                 className="card"
                 style={{ padding: '24px' }}
               >
-                <div className="flex items-center justify-between mb-3">
-                  <label className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+                  <label style={{ fontSize: '14px', fontWeight: 800, color: '#1e293b', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span>Your Response</span>
-                    <span className="text-xs font-normal text-slate-400">| Standard or Speech Input</span>
+                    <span style={{ fontSize: '12px', fontWeight: 500, color: '#64748b' }}>| Standard or Voice Input</span>
                   </label>
 
-                  <span className="text-xs font-medium text-slate-500">
+                  <span style={{ fontSize: '12px', fontWeight: 600, color: '#64748b' }}>
                     {answer.length} characters
                   </span>
                 </div>
@@ -673,18 +734,27 @@ const InterviewScreen = ({
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
-                      className="bg-rose-50 border border-rose-200 rounded-xl p-3 mt-3 flex items-center justify-between"
+                      style={{
+                        background: '#fef2f2',
+                        border: '1px solid #fecaca',
+                        borderRadius: '14px',
+                        padding: '12px 16px',
+                        marginTop: '12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between'
+                      }}
                     >
-                      <div className="flex items-center gap-3 text-rose-700">
-                        <div className="flex items-center gap-1">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#b91c1c' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                           <div className="sound-wave-bar" />
                           <div className="sound-wave-bar" />
                           <div className="sound-wave-bar" />
                           <div className="sound-wave-bar" />
                         </div>
-                        <span className="text-xs font-bold">Listening live... Speak clearly into your microphone</span>
+                        <span style={{ fontSize: '13px', fontWeight: 700 }}>Listening live... Speak clearly into your microphone</span>
                       </div>
-                      <span className="text-xs font-semibold text-rose-500 animate-pulse">RECORDING</span>
+                      <span style={{ fontSize: '11px', fontWeight: 800, color: '#ef4444' }} className="animate-pulse">RECORDING</span>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -696,9 +766,9 @@ const InterviewScreen = ({
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
-                      className="bg-amber-50 border border-amber-200 rounded-xl p-3 mt-3"
+                      style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '14px', padding: '12px 16px', marginTop: '12px' }}
                     >
-                      <div className="flex items-center gap-2 text-amber-800 text-xs font-semibold">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#92400e', fontSize: '13px', fontWeight: 600 }}>
                         <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
                         <span>{recordingError}</span>
                       </div>
@@ -707,15 +777,15 @@ const InterviewScreen = ({
                 </AnimatePresence>
 
                 {/* Workspace Action Buttons */}
-                <div className="flex flex-wrap items-center justify-between gap-3 mt-4 pt-3 border-t border-slate-100">
-                  <div className="flex items-center gap-2 text-xs text-slate-400 font-medium">
-                    <kbd className="px-2 py-1 bg-slate-100 border border-slate-300 rounded text-slate-600 font-mono text-xs">Ctrl</kbd>
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #f1f5f9' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#64748b', fontWeight: 500 }}>
+                    <kbd style={{ padding: '3px 8px', background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '6px', color: '#334155', fontFamily: 'monospace', fontSize: '11px' }}>Ctrl</kbd>
                     <span>+</span>
-                    <kbd className="px-2 py-1 bg-slate-100 border border-slate-300 rounded text-slate-600 font-mono text-xs">Enter</kbd>
+                    <kbd style={{ padding: '3px 8px', background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '6px', color: '#334155', fontFamily: 'monospace', fontSize: '11px' }}>Enter</kbd>
                     <span>to submit answer</span>
                   </div>
 
-                  <div className="flex items-center gap-3">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     {/* Voice Input Toggle */}
                     <motion.button
                       whileHover={{ scale: 1.03 }}
@@ -775,12 +845,12 @@ const InterviewScreen = ({
                 animate={{ opacity: 1, y: 0 }}
                 className="card text-center py-6 bg-slate-900 text-white"
               >
-                <div className="flex items-center justify-center gap-2 mb-1">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '4px' }}>
                   <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                  <span className="font-bold text-base">Answer Submitted</span>
+                  <span style={{ fontWeight: 800, fontSize: '16px' }}>Answer Submitted</span>
                 </div>
-                <p className="text-xs text-slate-400">
-                  Time recorded for this question: <span className="font-mono text-indigo-300 font-bold">{formatTime(timeElapsed)}</span>
+                <p style={{ fontSize: '13px', color: '#94a3b8' }}>
+                  Time recorded for this question: <span style={{ fontFamily: 'monospace', color: '#a5b4fc', fontWeight: 700 }}>{formatTime(timeElapsed)}</span>
                 </p>
               </motion.div>
             )}
@@ -788,7 +858,7 @@ const InterviewScreen = ({
           </div>
 
           {/* Right Column: Studio Proctor & AI Telemetry Sidebar */}
-          <div className="flex flex-col gap-5">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             
             {/* AI Proctor Video Stream Card */}
             {isCameraEnabled && !isReviewMode && (
@@ -797,12 +867,13 @@ const InterviewScreen = ({
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.4 }}
                 className="studio-card"
+                style={{ padding: '18px' }}
               >
                 {/* Header */}
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-sm shadow-emerald-400" />
-                    <span className="text-xs font-extrabold tracking-wider text-slate-200 uppercase">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ width: 8, height: 8, borderRadius: 9999, background: '#10b981', boxShadow: '0 0 8px #10b981' }} className="animate-pulse" />
+                    <span style={{ fontSize: '12px', fontWeight: 800, letterSpacing: '0.05em', color: '#f8fafc', textTransform: 'uppercase' }}>
                       AI Proctor Feed
                     </span>
                   </div>
@@ -810,22 +881,35 @@ const InterviewScreen = ({
                   <button
                     type="button"
                     onClick={() => setIsCameraEnabled(false)}
-                    className="text-xs text-slate-400 hover:text-white px-2 py-1 rounded bg-slate-800/80 border border-slate-700 transition-colors"
+                    style={{
+                      background: 'rgba(255,255,255,0.1)',
+                      border: '1px solid rgba(255,255,255,0.15)',
+                      color: '#94a3b8',
+                      borderRadius: '6px',
+                      padding: '3px 10px',
+                      cursor: 'pointer',
+                      fontSize: '11px',
+                      fontWeight: 700
+                    }}
                   >
                     Close
                   </button>
                 </div>
 
-                {/* Status Pills */}
+                {/* Status Badges Row */}
                 {!cameraError && (
-                  <div className="grid grid-cols-2 gap-2 mb-3">
-                    <div className={`py-1.5 px-2 rounded-lg text-center font-extrabold text-xs tracking-wide border ${
-                      proctorStatus === 'Face detected'
-                        ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'
-                        : proctorStatus === 'Looking away' || proctorStatus === 'No face detected'
-                          ? 'bg-rose-500/30 border-rose-500/50 text-rose-300'
-                          : 'bg-slate-800 border-slate-700 text-slate-300'
-                    }`}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '12px' }}>
+                    <div style={{
+                      padding: '6px 10px',
+                      borderRadius: '10px',
+                      fontSize: '11px',
+                      fontWeight: 800,
+                      textAlign: 'center',
+                      letterSpacing: '0.03em',
+                      border: proctorStatus === 'Face detected' ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(239, 68, 68, 0.4)',
+                      background: proctorStatus === 'Face detected' ? 'rgba(16, 185, 129, 0.25)' : 'rgba(239, 68, 68, 0.25)',
+                      color: proctorStatus === 'Face detected' ? '#6ee7b7' : '#fca5a5'
+                    }}>
                       {proctorStatus === 'Face detected'
                         ? '🟢 FOCUSED'
                         : proctorStatus === 'Looking away'
@@ -835,19 +919,29 @@ const InterviewScreen = ({
                             : String(proctorStatus || '').toUpperCase()}
                     </div>
 
-                    <div className="py-1.5 px-2 rounded-lg text-center font-extrabold text-xs tracking-wide bg-amber-500/20 border border-amber-500/30 text-amber-300">
+                    <div style={{
+                      padding: '6px 10px',
+                      borderRadius: '10px',
+                      fontSize: '11px',
+                      fontWeight: 800,
+                      textAlign: 'center',
+                      letterSpacing: '0.03em',
+                      border: '1px solid rgba(234, 179, 8, 0.35)',
+                      background: 'rgba(234, 179, 8, 0.2)',
+                      color: '#fde047'
+                    }}>
                       WARNINGS: {warningCount}/6
                     </div>
                   </div>
                 )}
 
-                {/* Stream Video & Canvas */}
-                <div className="relative rounded-xl overflow-hidden border border-slate-700/80 bg-slate-950 aspect-video shadow-inner">
+                {/* Fixed Height Widescreen 16:9 Camera Feed */}
+                <div className="camera-feed-box">
                   {cameraError ? (
-                    <div className="p-4 text-center text-slate-300 flex flex-col items-center justify-center h-full">
-                      <CameraOff className="w-8 h-8 text-rose-400 mb-2" />
-                      <span className="text-xs font-bold mb-1">Camera Permission Error</span>
-                      <span className="text-[11px] text-slate-400">{cameraError}</span>
+                    <div style={{ padding: '16px', color: 'white', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                      <Camera className="w-6 h-6 text-rose-400 mb-1" />
+                      <div style={{ fontSize: '12px', fontWeight: 700, marginBottom: '2px' }}>Camera Access Required</div>
+                      <div style={{ fontSize: '11px', color: '#94a3b8' }}>{cameraError}</div>
                     </div>
                   ) : (
                     <>
@@ -855,11 +949,11 @@ const InterviewScreen = ({
                         ref={videoRef}
                         muted
                         playsInline
-                        className="w-full h-full object-cover block transform -scale-x-100"
+                        className="camera-video-elem"
                       />
                       <canvas
                         ref={canvasRef}
-                        className="absolute inset-0 w-full h-full transform -scale-x-100"
+                        className="camera-canvas-elem"
                       />
                     </>
                   )}
@@ -874,27 +968,30 @@ const InterviewScreen = ({
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.4, delay: 0.15 }}
                 className="studio-card"
-                style={{ background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(30, 27, 75, 0.9) 100%)' }}
+                style={{
+                  background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(30, 27, 75, 0.9) 100%)',
+                  padding: '20px'
+                }}
               >
-                <div className="flex items-center gap-2 mb-3">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
                   <Cpu className="w-4 h-4 text-indigo-400" />
-                  <span className="text-xs font-extrabold tracking-wider text-indigo-200 uppercase">
+                  <span style={{ fontSize: '12px', fontWeight: 800, letterSpacing: '0.05em', color: '#c7d2fe', textTransform: 'uppercase' }}>
                     RL Adaptive Engine
                   </span>
                 </div>
 
-                <div className="space-y-2 text-xs">
-                  <div className="flex justify-between items-center p-2 rounded-lg bg-slate-900/60 border border-slate-800">
-                    <span className="text-slate-400">Current Difficulty</span>
-                    <span className="font-bold text-indigo-300">{rlDifficulty}</span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', borderRadius: '10px', background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                    <span style={{ color: '#94a3b8' }}>Current Difficulty</span>
+                    <span style={{ fontWeight: 800, color: '#818cf8' }}>{rlDifficulty}</span>
                   </div>
 
-                  <div className="flex justify-between items-center p-2 rounded-lg bg-slate-900/60 border border-slate-800">
-                    <span className="text-slate-400">Target Action</span>
-                    <span className="font-bold text-emerald-400">{rlActionName || 'MAINTAIN_DEEPEN'}</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', borderRadius: '10px', background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                    <span style={{ color: '#94a3b8' }}>Target Action</span>
+                    <span style={{ fontWeight: 800, color: '#34d399' }}>{rlActionName || 'MAINTAIN_DEEPEN'}</span>
                   </div>
 
-                  <p className="text-[11px] text-slate-400 leading-relaxed pt-1">
+                  <p style={{ fontSize: '11px', color: '#94a3b8', lineHeight: 1.5, paddingTop: '4px' }}>
                     The RL policy continuously adjusts question complexity and scoring weights based on your speed, confidence, and accuracy.
                   </p>
                 </div>
@@ -906,21 +1003,26 @@ const InterviewScreen = ({
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.4, delay: 0.2 }}
-              className="card bg-indigo-950/40 border border-indigo-500/20 text-slate-300"
-              style={{ padding: '18px' }}
+              className="card"
+              style={{
+                background: 'rgba(30, 27, 75, 0.4)',
+                border: '1px solid rgba(99, 102, 241, 0.25)',
+                color: '#e2e8f0',
+                padding: '18px'
+              }}
             >
-              <div className="flex items-center gap-2 mb-2.5 text-indigo-300">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px', color: '#818cf8' }}>
                 <HelpCircle className="w-4 h-4" />
-                <span className="text-xs font-bold uppercase tracking-wider">Interview Tips</span>
+                <span style={{ fontSize: '12px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Interview Tips</span>
               </div>
 
-              <ul className="space-y-2 text-xs text-slate-300">
-                <li className="flex items-start gap-2">
-                  <span className="text-indigo-400 font-bold">•</span>
+              <ul style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12px', color: '#cbd5e1', paddingLeft: '4px' }}>
+                <li style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                  <span style={{ color: '#818cf8', fontWeight: 800 }}>•</span>
                   <span>Structure your response using the <strong>STAR</strong> method (Situation, Task, Action, Result).</span>
                 </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-indigo-400 font-bold">•</span>
+                <li style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                  <span style={{ color: '#818cf8', fontWeight: 800 }}>•</span>
                   <span>Speak clearly when using <strong>Voice Input</strong> for maximum AI accuracy.</span>
                 </li>
               </ul>
