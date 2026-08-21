@@ -263,14 +263,24 @@ function App() {
     let updatedQuestions = [...interviewData.questions];
     if (nextQuestion && !updatedQuestions[nextIndex]) {
       updatedQuestions.push(nextQuestion);
+    } else if (!updatedQuestions[nextIndex] && nextIndex < 5) {
+      const fallbackBank = [
+        `How do you handle performance optimization, memory management, and trade-offs in ${interviewData.topic}?`,
+        `What are common design anti-patterns or concurrency bugs in ${interviewData.topic} and how do you prevent them?`,
+        `Explain how error handling, async pipelines, and state synchronization operate under high load in ${interviewData.topic}.`,
+        `Describe a complex production failure or scaling issue involving ${interviewData.topic} that you would troubleshoot.`
+      ];
+      updatedQuestions.push(fallbackBank[(nextIndex - 1) % fallbackBank.length]);
     }
+
+    const isComplete = nextIndex >= 5;
 
     setInterviewData({
       ...interviewData,
       questions: updatedQuestions,
       answers: newAnswers,
       reviews: newReviews,
-      currentQuestionIndex: nextIndex,
+      currentQuestionIndex: isComplete ? interviewData.currentQuestionIndex : nextIndex,
       rlDifficulty: newDifficulty,
       rlActionName: newActionName,
       rlHistory: updatedHistory
@@ -278,11 +288,18 @@ function App() {
 
     setActiveReviewIndex(newReviews.length - 1);
     
-    if (nextIndex >= 5 || (nextIndex >= updatedQuestions.length && !nextQuestion)) {
-      setCurrentScreen('summary');
+    if (isComplete) {
+      // Don't switch immediately if review modal is showing, otherwise switch to summary
     } else {
       setCurrentScreen('interview');
     }
+
+    return {
+      review,
+      nextQuestion: updatedQuestions[nextIndex],
+      nextIndex,
+      isComplete
+    };
   };
 
   const handleNextQuestion = () => {

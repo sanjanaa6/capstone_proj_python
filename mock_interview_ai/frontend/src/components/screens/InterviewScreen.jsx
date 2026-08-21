@@ -28,6 +28,7 @@ const InterviewScreen = ({
   const [proctorStatus, setProctorStatus] = useState('Camera off');
   const [warningCount, setWarningCount] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [activeEvaluation, setActiveEvaluation] = useState(null);
 
   const textareaRef = useRef(null);
   const recognitionRef = useRef(null);
@@ -360,12 +361,28 @@ const InterviewScreen = ({
       setIsSubmitting(true);
       setIsTimerRunning(false);
       try {
-        await onSubmitAnswer(answer, timeElapsed);
-        setAnswer('');
-        setTimeElapsed(0);
+        const res = await onSubmitAnswer(answer, timeElapsed);
+        if (res && res.review) {
+          setActiveEvaluation(res);
+        } else {
+          setAnswer('');
+          setTimeElapsed(0);
+        }
+      } catch (err) {
+        console.error('Error submitting answer:', err);
       } finally {
         setIsSubmitting(false);
       }
+    }
+  };
+
+  const handleProceedNext = () => {
+    setAnswer('');
+    setTimeElapsed(0);
+    const wasComplete = activeEvaluation?.isComplete;
+    setActiveEvaluation(null);
+    if (wasComplete) {
+      onNextQuestion();
     }
   };
 
@@ -1031,6 +1048,128 @@ const InterviewScreen = ({
           </div>
 
         </div>
+
+        {/* Instant AI Evaluation Feedback Modal */}
+        <AnimatePresence>
+          {activeEvaluation && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              style={{
+                position: 'fixed',
+                inset: 0,
+                zIndex: 99999,
+                background: 'rgba(15, 23, 42, 0.8)',
+                backdropFilter: 'blur(8px)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '24px'
+              }}
+            >
+              <motion.div
+                initial={{ scale: 0.9, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.9, y: 20 }}
+                style={{
+                  background: '#ffffff',
+                  borderRadius: '24px',
+                  maxWidth: '680px',
+                  width: '100%',
+                  maxHeight: '90vh',
+                  overflowY: 'auto',
+                  boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.4)',
+                  border: '1px solid rgba(226, 232, 240, 0.9)',
+                  padding: '32px'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{
+                      padding: '4px 12px',
+                      borderRadius: '9999px',
+                      background: '#ecfdf5',
+                      color: '#059669',
+                      fontWeight: 800,
+                      fontSize: '12px',
+                      border: '1px solid #a7f3d0'
+                    }}>
+                      Answer Submitted ✅
+                    </span>
+                    <span style={{ fontSize: '14px', color: '#64748b', fontWeight: 600 }}>
+                      Question {questionNumber} of {totalQuestions}
+                    </span>
+                  </div>
+
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '8px 16px',
+                    borderRadius: '16px',
+                    background: activeEvaluation.review.score >= 7 ? '#f0fdf4' : activeEvaluation.review.score >= 5 ? '#fffbeb' : '#fef2f2',
+                    border: `1px solid ${activeEvaluation.review.score >= 7 ? '#bbf7d0' : activeEvaluation.review.score >= 5 ? '#fde68a' : '#fecaca'}`
+                  }}>
+                    <Sparkles className={`w-5 h-5 ${activeEvaluation.review.score >= 7 ? 'text-emerald-500' : activeEvaluation.review.score >= 5 ? 'text-amber-500' : 'text-red-500'}`} />
+                    <span style={{ fontSize: '22px', fontWeight: 900, color: activeEvaluation.review.score >= 7 ? '#15803d' : activeEvaluation.review.score >= 5 ? '#b45309' : '#b91c1c' }}>
+                      {typeof activeEvaluation.review.score === 'number' ? activeEvaluation.review.score.toFixed(1) : '7.5'}
+                    </span>
+                    <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 700 }}>/ 10</span>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: '20px' }}>
+                  <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a', marginBottom: '8px' }}>
+                    AI Response Evaluation
+                  </h3>
+                  <p style={{ fontSize: '14px', color: '#334155', lineHeight: 1.65, background: '#f8fafc', padding: '18px', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
+                    {activeEvaluation.review.feedback || 'Good attempt on this question. Continue maintaining structured responses with concrete technical examples.'}
+                  </p>
+                </div>
+
+                {activeEvaluation.review.strengths?.length > 0 && (
+                  <div style={{ marginBottom: '16px' }}>
+                    <span style={{ fontSize: '12px', fontWeight: 800, color: '#166534', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Key Strengths</span>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '6px' }}>
+                      {activeEvaluation.review.strengths.map((s, idx) => (
+                        <span key={idx} style={{ padding: '6px 12px', borderRadius: '10px', background: '#f0fdf4', color: '#15803d', fontSize: '13px', fontWeight: 600, border: '1px solid #bbf7d0' }}>
+                          ✓ {s}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {activeEvaluation.review.improvements?.length > 0 && (
+                  <div style={{ marginBottom: '24px' }}>
+                    <span style={{ fontSize: '12px', fontWeight: 800, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Suggestions to Improve</span>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '6px' }}>
+                      {activeEvaluation.review.improvements.map((imp, idx) => (
+                        <span key={idx} style={{ padding: '6px 12px', borderRadius: '10px', background: '#fffbeb', color: '#b45309', fontSize: '13px', fontWeight: 600, border: '1px solid #fde68a' }}>
+                          💡 {imp}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '12px', paddingTop: '16px', borderTop: '1px solid #f1f5f9' }}>
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={handleProceedNext}
+                    className="btn-primary"
+                    style={{ padding: '12px 28px', fontSize: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}
+                  >
+                    <span>{activeEvaluation.isComplete ? 'View Performance Summary' : `Proceed to Question ${activeEvaluation.nextIndex + 1}`}</span>
+                    <ChevronRight className="w-5 h-5" />
+                  </motion.button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </motion.div>
     </div>
   );

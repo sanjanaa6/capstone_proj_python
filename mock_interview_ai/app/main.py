@@ -7,6 +7,7 @@ from app.services.question_gen import generate_questions, generate_single_adapti
 from app.services.review import review_answer
 from app.services.chat import chat_reply
 from app.services.rl_agent import rl_agent
+import asyncio
 import os
 
 app = FastAPI(title="Mock Interview AI with RL Adaptive Engine")
@@ -70,43 +71,39 @@ async def start_rl_interview(data: RLStartRequest):
 
 @app.post("/rl/submit-step", response_model=RLStepResponse)
 async def submit_rl_step(data: RLStepRequest):
-    # 1. Review candidate's answer
-    review = review_answer(data.question, data.answer)
+    # 1. State & Action determination (< 0.0001s)
+    state = rl_agent.get_state(data.current_difficulty, data.previous_score)
+    action, action_name, q_values = rl_agent.select_action(state)
+    new_difficulty = rl_agent.determine_next_difficulty(data.current_difficulty, action)
+
+    # 2. Run Answer Review and Next Question Generation concurrently in parallel!
+    review_task = review_answer(data.question, data.answer)
+    
+    if data.turn_index < data.total_questions:
+        question_task = generate_single_adaptive_question(
+            topic=data.topic,
+            difficulty=new_difficulty,
+            action_name=action_name,
+            turn_index=data.turn_index + 1
+        )
+        review, next_question = await asyncio.gather(review_task, question_task)
+    else:
+        review = await review_task
+        next_question = ""
+
+    # 3. Process score & Q-Learning Bellman update
     raw_score = review.get("score")
     score = float(raw_score) if isinstance(raw_score, (int, float)) else 6.0
 
-    # 2. Determine previous state
-    state = rl_agent.get_state(data.current_difficulty, data.previous_score)
-
-    # 3. Select RL Action
-    action, action_name, q_values = rl_agent.select_action(state)
-
-    # 4. Calculate RL Reward
     reward = rl_agent.calculate_reward(
         score=score,
         previous_score=data.previous_score,
         action=action,
         difficulty=data.current_difficulty
     )
-
-    # 5. Determine Next Difficulty & Next State
-    new_difficulty = rl_agent.determine_next_difficulty(data.current_difficulty, action)
     new_state = rl_agent.get_state(new_difficulty, score)
-
-    # 6. Update Q-Table via Bellman Equation
     rl_agent.update_q_value(state, action, reward, new_state)
 
-    # 7. Generate Next Question if turn < total
-    next_question = ""
-    if data.turn_index < data.total_questions:
-        next_question = await generate_single_adaptive_question(
-            topic=data.topic,
-            difficulty=new_difficulty,
-            action_name=action_name,
-            turn_index=data.turn_index + 1
-        )
-
-    # Policy explanation string
     explanation = f"RL Agent evaluated score ({score:.1f}/10) in state '{state}'. Selected action '{action_name}' (Reward: {reward:+.1f}). Adapted difficulty from '{data.current_difficulty}' -> '{new_difficulty}'."
 
     return RLStepResponse(
