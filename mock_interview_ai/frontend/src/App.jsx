@@ -154,6 +154,27 @@ function App() {
     setCurrentScreen('job-setup');
   };
 
+  const getCleanRoleName = (topic) => {
+    if (!topic) return "Software Engineering";
+    const m = topic.match(/(?:Target\s*Role|Job\s*Role):\s*([^|\n,]+)/i);
+    if (m && m[1].trim()) {
+      return m[1].replace(/\(.*?\)/g, '').trim();
+    }
+    if (topic.includes('|')) {
+      const parts = topic.split('|').map(p => p.trim());
+      for (const p of parts) {
+        if (!/^(?:focus:|level:|job description|requirements:|responsibilities:)/i.test(p)) {
+          const clean = p.replace(/^(?:Job\s*Role|Target\s*Role):\s*/i, '').replace(/\(.*?\)/g, '').trim();
+          if (clean) return clean;
+        }
+      }
+    }
+    if (topic.length > 40) {
+      return topic.split('\n')[0].split('.')[0].substring(0, 35).trim();
+    }
+    return topic.trim();
+  };
+
   const handleStartInterview = async (topic, isRLMode = true) => {
     let questions = [];
     let initialDifficulty = 'Medium';
@@ -178,12 +199,13 @@ function App() {
         questions = data?.questions || [];
       } catch (error) {
         console.error('Error starting standard interview:', error);
+        const cleanRole = getCleanRoleName(topic);
         questions = [
-          `Tell me about your experience with ${topic}.`,
-          `How do you handle performance challenges in ${topic}?`,
-          `Describe a challenging problem involving ${topic} you solved recently.`,
-          `What are best practices when building systems with ${topic}?`,
-          `Where do you see ${topic} evolving in the future?`
+          `How do you architect scalable microservices and handle high QPS for a ${cleanRole} position?`,
+          `In a ${cleanRole} ecosystem, how do you manage distributed caching, connection pooling, and database query indexing?`,
+          `Describe how you handle asynchronous task processing, message queue workers, and failure recovery when building for ${cleanRole}.`,
+          `Walk me through a complex production outage, memory leak, or performance bottleneck you solved as a ${cleanRole}.`,
+          `What design principles and trade-offs do you prioritize when building resilient backend systems for a ${cleanRole}?`
         ];
       }
     }
@@ -264,11 +286,12 @@ function App() {
     if (nextQuestion && !updatedQuestions[nextIndex]) {
       updatedQuestions.push(nextQuestion);
     } else if (!updatedQuestions[nextIndex] && nextIndex < 5) {
+      const cleanRole = getCleanRoleName(interviewData.topic);
       const fallbackBank = [
-        `How do you handle performance optimization, memory management, and trade-offs in ${interviewData.topic}?`,
-        `What are common design anti-patterns or concurrency bugs in ${interviewData.topic} and how do you prevent them?`,
-        `Explain how error handling, async pipelines, and state synchronization operate under high load in ${interviewData.topic}.`,
-        `Describe a complex production failure or scaling issue involving ${interviewData.topic} that you would troubleshoot.`
+        `How do you handle performance optimization, memory management, and trade-offs in a ${cleanRole} system?`,
+        `What are common design anti-patterns or concurrency bugs in ${cleanRole} architecture and how do you prevent them?`,
+        `Explain how error handling, async pipelines, and state synchronization operate under high load for ${cleanRole}.`,
+        `Describe a complex production failure or scaling issue involving a ${cleanRole} system that you would troubleshoot.`
       ];
       updatedQuestions.push(fallbackBank[(nextIndex - 1) % fallbackBank.length]);
     }
@@ -403,7 +426,7 @@ function App() {
       settings: 'Settings'
     };
     const headerTitle = headerTitleByKey[currentScreen] || 'Dashboard';
-    const headerSubtitle = hasStarted ? `Topic: ${interviewData.topic || '—'}` : 'Configure Job Setup to start practice.';
+    const headerSubtitle = hasStarted ? `Topic: ${getCleanRoleName(interviewData.topic)}` : 'Configure Job Setup to start practice.';
 
     const dashboardHeaderRight = hasStarted ? (
       <button type="button" className="ds-header-btn" onClick={handleRestartInterview}>
